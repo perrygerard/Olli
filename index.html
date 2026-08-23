@@ -2958,13 +2958,28 @@
       petal:'#ffedc4', petalPink:'#f0ac3d', pollen:'#e0921f', stem:'#3E4200',
       spark:'#ffe28a',
     },
+    // Winter's approved colorway: an icy-white hedge top (hedgeHi carries no fill
+    // role here -- it's the LARGE snow-cap speckle colour, scaled via speckleScale/
+    // speckleTileSize below to read as drifted snow rather than the fine leaf-
+    // shadow grain every other look uses, and rendered via the vector (marching-
+    // squares) path -- speckleSmooth:true -- instead of the default raster
+    // threshold, since a boundary this large needs real antialiasing) over a deep
+    // evergreen base, plus its own ground-level snow speckle (groundSpeckle/
+    // groundSpeckleThresh, drawn separately from the hedge's, fine-grain at the
+    // default G/tileSize -- see drawGroundSpeckle, wired into bakeGarden below --
+    // and also routed through the vector path via groundSpeckleSmooth:true, same
+    // reasoning as the hedge speckle: a raster threshold on a boundary this size
+    // reads as visibly bitmapped up close) since no other look needed textured
+    // ground before.
     [LOOK.WINTER]: {
-      grass:'#eef4f2',
-      hedgeLo:'#12261c', hedgeMid:'#1f4530', hedgeHi:'#ffffff',
+      grass:'#EDF4F2',
+      hedgeLo:'#084A2E', hedgeMid:'#00672E', hedgeHi:'#ffffff',
+      speckle:['#ffffff'], speckleThresh:0.72, speckleScale:8, speckleTileSize:288, speckleSmooth:true,
+      groundSpeckle:'#ffffff', groundSpeckleThresh:0.80, groundSpeckleSmooth:true,
       cloudLo:'#d7e3ea', cloudMid:'#eef3f6', cloudHi:'#ffffff',
       cast:'rgba(14,30,38,.35)',
       pathLo:'#b9d0da', path:'#dce9ee', lamp:'#bfe9f2', lampCore:'#ffffff',
-      petal:'#ffffff', petalPink:'#8fd6e8', pollen:'#cdeef5', stem:'#1f4530',
+      petal:'#ffffff', petalPink:'#8fd6e8', pollen:'#cdeef5', stem:'#084A2E',
       spark:'#d8f4fb',
     },
     [LOOK.DEAD]: {
@@ -2995,61 +3010,217 @@
 
   // Clipped onto just the hedge's top layer (see drawHedgeWalls/bakeGarden) to break up
   // the flat fill the way the hand-drawn stamp art's speckle used to, without needing
-  // per-season art. One colour, not three, so it reads as shading/clipped-leaf shadow
-  // rather than confetti, and blocky irregular patches instead of round dots -- a coarse
-  // value-noise field (the same corner-lattice-plus-smoothstep interpolation as any
-  // standard value noise), sampled on a 2px grid and thresholded, so a patch's edges
-  // fall on that grid instead of tracing a smooth curve. The corner lattice wraps mod G,
-  // so the field is exactly periodic across the tile and the pattern repeats with no seam.
-  // Keyed per colour (not one shared pattern) -- Bloom's reversed treatment and
-  // Fall's duo-tone need their own speckle tints alongside the default, so all three
-  // coexist rather than one overwriting the others' cache.
+  // per-season art. Keyed per colour (not one shared pattern) -- Bloom's reversed
+  // treatment, Fall's duo-tone, and Winter's large blobs each need their own speckle
+  // tints/params alongside the default, so they all coexist rather than one
+  // overwriting the others' cache.
   const hedgeSpecklePats = {};
   // colors: a single string (the original one-tone speckle) or an array of strings
   // for a duo/multi-tone speckle (Fall) -- each colour gets its own independently
   // seeded noise lattice (offset by its index) so patches don't land in lockstep.
-  // thresh: how much of the noise field counts as "on" -- lower is denser. Defaults
-  // to the original 0.70; Fall's leafier scatter uses a lower value (see bakeGarden).
-  function hedgeSpeckle(colors, thresh){
+  // thresh: how much of the noise field counts as "on" -- lower is denser. G: the
+  // noise lattice resolution -- the default 54 gives fine leaf-litter-scale grain; a
+  // much smaller G (e.g. 8) gives big cow-print-style blobs. tileSize: the source
+  // tile's pixel resolution, default 96 -- growing it while holding G fixed
+  // stretches each lattice cell (and its blob) proportionally larger on screen.
+  //
+  // smooth picks between two entirely different ways of turning that noise field
+  // into pixels:
+  //  - false/default (raster): the original per-pixel hard threshold, sampled on a
+  //    2px grid. Deliberately a bit blocky -- that's the intended look for Bloom/
+  //    Fall's leaf-litter speckle and Winter's ground dust, not a limitation, so
+  //    this path is untouched from before Winter's work started.
+  //  - true (vector): traces the SAME noise field's thresh-crossing contour into
+  //    real closed paths and fills them, so canvas's native path-fill antialiasing
+  //    does the smoothing -- automatically crisp at any scale, no manual coverage
+  //    math or supersample/band tuning needed. This replaced three earlier raster-
+  //    antialiasing attempts (a drawImage downscale, a manual coverage box-filter,
+  //    and a sharpening band on top of that) that each looked right in isolated
+  //    testing but broke down once actually on screen -- see the hedge-worlds
+  //    session notes for the specifics. This is what Winter's large snow-cap blobs
+  //    use, and it's a reusable option for any future look that wants big, smooth,
+  //    organic texture patches (the fine leaf-litter/ground-dust scale doesn't
+  //    need or want it).
+  //
+  // The vector path uses marching squares -- the same family of technique used to
+  // draw contour lines on a topographic map -- with two details worth recording:
+  //  1. Loop stitching matches segment endpoints by their EXACT grid-edge identity
+  //     (which cell edge, as integer indices), not by rounding their interpolated
+  //     floating-point position to a shared key. Position-rounding can
+  //     coincidentally merge two genuinely different crossings that happen to land
+  //     on the same rounded pixel, which silently corrupts a loop's shape.
+  //  2. The tile is periodic, so tracing wraps at the tile edge as a true one-
+  //     period torus (grid indices wrap modulo the cell count when looking up a
+  //     neighbour -- padding a finite domain instead doesn't work, since a large
+  //     contour just gets truncated wherever the padding ends). A loop that
+  //     crosses the seam then has raw coordinates that jump from one edge of the
+  //     tile to the other, so those get UNWRAPPED (add/subtract one tile length
+  //     whenever a step's jump is implausibly large) before flattening into a
+  //     path, so the filled shape stays continuous instead of a straight line
+  //     slicing across the tile where it wrapped.
+  function hedgeSpeckle(colors, thresh, G, tileSize, smooth){
     colors = colors || 'rgba(36,101,52,.5)';
     if (typeof colors === 'string') colors = [colors];
     thresh = thresh === undefined ? 0.70 : thresh;
-    const key = colors.join('|') + '@' + thresh;
+    G = G || 54;
+    const T = tileSize || 96;
+    const key = colors.join('|') + '@' + thresh + '@' + G + '@' + T + '@' + (smooth?1:0);
     if (hedgeSpecklePats[key]) return hedgeSpecklePats[key];
-    // CELL has to stay a whole number of pixels -- the previous pass at "3x smaller"
-    // scaled it down to a fraction (2/3) right along with G, which kept the same
-    // proportions on paper but meant almost every block landed on a non-integer
-    // coordinate. fillRect at a fractional position isn't a hard-edged rect, it's
-    // partial pixel coverage blended with whatever's behind it, and with a block
-    // that small almost the whole block was that blended edge -- which is what read
-    // as a soft, low-res blur rather than a crisp patch. G is still tripled from the
-    // original pass at this (18) for the smaller patches; CELL stays a flat 1px
-    // (rounded down from 2/3) so every block is hard-edged, and THRESH is nudged up
-    // to keep the coverage from reading as denser now that patches are finer-grained.
-    const T = 96, G = 54, CELL = 1;
     const t = document.createElement('canvas'); t.width = t.height = T;
     const c = t.getContext('2d');
-    const smooth = v => v*v*(3-2*v);
+    const smoothstep = v => v*v*(3-2*v);
     colors.forEach((color, ci) => {
       const seedOff = ci * 137.9;
       const corner = (gx,gy) => hash(((gx%G)+G)%G + 71.3*(((gy%G)+G)%G) + seedOff, 61);
       const noiseAt = (x,y) => {
         const gx = x/T*G, gy = y/T*G;
         const x0 = Math.floor(gx), y0 = Math.floor(gy);
-        const fx = smooth(gx-x0), fy = smooth(gy-y0);
+        const fx = smoothstep(gx-x0), fy = smoothstep(gy-y0);
         const c00 = corner(x0,y0), c10 = corner(x0+1,y0), c01 = corner(x0,y0+1), c11 = corner(x0+1,y0+1);
         return (c00*(1-fx)+c10*fx)*(1-fy) + (c01*(1-fx)+c11*fx)*fy;
       };
-      c.fillStyle = color;
-      for (let y=0;y<T;y+=CELL){
-        for (let x=0;x<T;x+=CELL){
-          if (noiseAt(x+CELL/2, y+CELL/2) > thresh) c.fillRect(x, y, CELL, CELL);
+
+      if (!smooth){
+        c.fillStyle = color;
+        for (let y=0;y<T;y++){
+          for (let x=0;x<T;x++){
+            if (noiseAt(x+0.5, y+0.5) > thresh) c.fillRect(x, y, 1, 1);
+          }
+        }
+        return;
+      }
+
+      // ---- vector path (marching squares -> smoothed closed paths) ----
+      const STEP = 2;
+      const N = Math.round(T/STEP);
+      const val = [];
+      for (let j=0;j<=N;j++){
+        const row = [];
+        for (let i=0;i<=N;i++) row.push(noiseAt(i*STEP, j*STEP));
+        val.push(row);
+      }
+      const interp = (v0,v1) => v1===v0 ? 0.5 : Math.max(0, Math.min(1, (thresh-v0)/(v1-v0)));
+      const segs = [];
+      for (let j=0;j<N;j++){
+        for (let i=0;i<N;i++){
+          const tl=val[j][i], tr=val[j][i+1], br=val[j+1][i+1], bl=val[j+1][i];
+          const cidx = (tl>thresh?8:0)|(tr>thresh?4:0)|(br>thresh?2:0)|(bl>thresh?1:0);
+          if (cidx===0 || cidx===15) continue;
+          const x0=i*STEP, y0=j*STEP;
+          const topKey    = 'h'+(i%N)+','+(j%N);
+          const bottomKey = 'h'+(i%N)+','+((j+1)%N);
+          const leftKey   = 'v'+(i%N)+','+(j%N);
+          const rightKey  = 'v'+((i+1)%N)+','+(j%N);
+          const top    = [[x0+interp(tl,tr)*STEP, y0], topKey];
+          const right  = [[x0+STEP, y0+interp(tr,br)*STEP], rightKey];
+          const bottom = [[x0+interp(bl,br)*STEP, y0+STEP], bottomKey];
+          const left   = [[x0, y0+interp(tl,bl)*STEP], leftKey];
+          const avg = (tl+tr+br+bl)/4;
+          const p2 = (a,b) => segs.push([a,b]);
+          switch(cidx){
+            case 1: p2(left,bottom); break;
+            case 2: p2(bottom,right); break;
+            case 3: p2(left,right); break;
+            case 4: p2(top,right); break;
+            case 5: if (avg>thresh){ p2(left,top); p2(bottom,right); } else { p2(left,bottom); p2(top,right); } break;
+            case 6: p2(top,bottom); break;
+            case 7: p2(left,top); break;
+            case 8: p2(left,top); break;
+            case 9: p2(top,bottom); break;
+            case 10: if (avg>thresh){ p2(top,right); p2(left,bottom); } else { p2(left,top); p2(bottom,right); } break;
+            case 11: p2(top,right); break;
+            case 12: p2(left,right); break;
+            case 13: p2(bottom,right); break;
+            case 14: p2(left,bottom); break;
+          }
         }
       }
+
+      // stitch by EXACT edge key -- collision-free, unlike matching on rounded position
+      const adj = new Map();
+      segs.forEach(([A,B], si) => {
+        const ka = A[1], kb = B[1];
+        if (!adj.has(ka)) adj.set(ka, []);
+        if (!adj.has(kb)) adj.set(kb, []);
+        adj.get(ka).push([B, si]);
+        adj.get(kb).push([A, si]);
+      });
+      const used = new Array(segs.length).fill(false);
+      const loops = [];
+      for (let si=0; si<segs.length; si++){
+        if (used[si]) continue;
+        const [A,B] = segs[si];
+        const loop = [A[0], B[0]];
+        used[si] = true;
+        let curKey = B[1];
+        const startKey = A[1];
+        let guard = 0;
+        while (guard++ < segs.length+5){
+          const opts = (adj.get(curKey)||[]).filter(o => !used[o[1]]);
+          if (!opts.length) break;
+          const [pair, osi] = opts[0];
+          used[osi] = true;
+          loop.push(pair[0]);
+          curKey = pair[1];
+          if (curKey === startKey) break;
+        }
+        if (loop.length > 3) loops.push(loop);
+      }
+
+      // unwrap coordinates so a loop crossing the tile seam stays continuous
+      const unwrap = loop => {
+        const out = [loop[0]];
+        let ox = 0, oy = 0;
+        for (let k=1;k<loop.length;k++){
+          const px = out[out.length-1][0], py = out[out.length-1][1];
+          let x = loop[k][0], y = loop[k][1];
+          while (x+ox-px > T/2) ox -= T;
+          while (x+ox-px < -T/2) ox += T;
+          while (y+oy-py > T/2) oy -= T;
+          while (y+oy-py < -T/2) oy += T;
+          out.push([x+ox, y+oy]);
+        }
+        return out;
+      };
+
+      c.fillStyle = color;
+      loops.forEach(rawLoop => {
+        const loop = unwrap(rawLoop);
+        const n = loop.length;
+        const mid = (a,b) => [(a[0]+b[0])/2, (a[1]+b[1])/2];
+        // draw the tile plus its 8 neighbours (shifted by -T/0/+T) so a blob that
+        // crosses the seam paints correctly on both sides within this T x T canvas
+        for (let ox=-T; ox<=T; ox+=T){
+          for (let oy=-T; oy<=T; oy+=T){
+            c.beginPath();
+            const m0 = mid(loop[0], loop[1]);
+            c.moveTo(m0[0]+ox, m0[1]+oy);
+            for (let k=1;k<n;k++){
+              const a = loop[k], b = loop[(k+1)%n];
+              const m = mid(a,b);
+              c.quadraticCurveTo(a[0]+ox, a[1]+oy, m[0]+ox, m[1]+oy);
+            }
+            c.closePath();
+            c.fill();
+          }
+        }
+      });
     });
     const pat = ctx.createPattern(t, 'repeat');
     hedgeSpecklePats[key] = pat;
     return pat;
+  }
+
+  // Winter-only: a separate fine-grain speckle scattered across the ground itself
+  // (not clipped to the hedge), same value-noise technique at the default G/tileSize
+  // (no size overrides needed -- ground snow stays small, just antialiased rather
+  // than hard-edged) so it reads as light dusting rather than the hedge's large
+  // drifted-snow caps.
+  function drawGroundSpeckle(g, w, h, ox, oy, color, thresh, G, tileSize, smooth){
+    g.save();
+    g.fillStyle = cardAnchor(hedgeSpeckle(color, thresh, G, tileSize, smooth), ox, oy);
+    g.fillRect(0, 0, w, h);
+    g.restore();
   }
 
   const gSeen = i => brightnessOf(i) > 0;
@@ -3730,18 +3901,27 @@
     // old capsule-fill's g.clip(), which doesn't apply here since a stroke plus loose
     // bump circles isn't one closed path a clip could capture.
     if (w !== undefined && h !== undefined){
+      // tmp gets composited onto g via drawImage below, and g is drawn at dpr-scaled
+      // resolution. If tmp were left at plain CSS-pixel resolution, that drawImage
+      // call would have to scale it UP by dpr, and browsers' drawImage upscaling
+      // isn't reliably high-quality -- it can land close to nearest-neighbor,
+      // turning crisp antialiased vector speckle edges into visible blocky/staircase
+      // pixels (the same unreliability we hit with drawImage downscaling earlier).
+      // Building tmp at the same device-pixel density as g and drawing it back at
+      // explicit CSS size makes the composite a 1:1 pixel copy -- no resampling.
       const tmp = document.createElement('canvas');
-      tmp.width = Math.max(1, Math.ceil(w));
-      tmp.height = Math.max(1, Math.ceil(h));
+      tmp.width = Math.max(1, Math.ceil(w * dpr));
+      tmp.height = Math.max(1, Math.ceil(h * dpr));
       const tg = tmp.getContext('2d');
+      tg.setTransform(dpr, 0, 0, dpr, 0, 0);
       box(tg, th0, pal.wallLiner, 0, 0);
       if (HEDGE_WALL_BUMPS) bumps(tg, th0, 0, pal.wallLiner);
       tg.save();
       tg.globalCompositeOperation = 'source-atop';
-      tg.fillStyle = cardAnchor(hedgeSpeckle(pal.speckle, pal.speckleThresh), wox, woy);
+      tg.fillStyle = cardAnchor(hedgeSpeckle(pal.speckle, pal.speckleThresh, pal.speckleScale, pal.speckleTileSize, pal.speckleSmooth), wox, woy);
       tg.fillRect(0, 0, w, h);
       tg.restore();
-      g.drawImage(tmp, 0, 0);
+      g.drawImage(tmp, 0, 0, w, h);
     } else {
       box(g, th0, pal.wallLiner, 0, 0);
       if (HEDGE_WALL_BUMPS) bumps(g, th0, 0, pal.wallLiner);
@@ -4022,6 +4202,9 @@
 
     g.fillStyle = GARDEN.grass; g.fillRect(0,0,w,h);
     g.fillStyle = cardAnchor(paperTile(), ox, oy); g.fillRect(0,0,w,h);
+    // Winter-only: a light dusting of snow speckle across the ground itself, under
+    // everything else (path/hedge/cloud all draw over it) -- see drawGroundSpeckle.
+    if (GARDEN.groundSpeckle) drawGroundSpeckle(g, w, h, ox, oy, GARDEN.groundSpeckle, GARDEN.groundSpeckleThresh, GARDEN.groundSpeckleScale, GARDEN.groundSpeckleTileSize, GARDEN.groundSpeckleSmooth);
 
     // The hedge's wall-face extrusion goes down first, before the path -- it's the
     // ground-level base/ shadow of the wall, and the path sits on the ground too, so
@@ -4101,6 +4284,13 @@
       HEDGE_WALL_PAL = {
         shadow: 'rgba('+toRGB(GARDEN.hedgeLo).join(',')+',', wallBase: GARDEN.hedgeLo,
         wallLiner: GARDEN.hedgeMid, speckle: GARDEN.speckle, speckleThresh: 0.65,
+      };
+    } else if (curLook === LOOK.WINTER){
+      HEDGE_WALL_PAL = {
+        shadow: 'rgba('+toRGB(GARDEN.hedgeLo).join(',')+',', wallBase: GARDEN.hedgeLo,
+        wallLiner: GARDEN.hedgeMid, speckle: GARDEN.speckle, speckleThresh: GARDEN.speckleThresh,
+        speckleScale: GARDEN.speckleScale,
+        speckleTileSize: GARDEN.speckleTileSize, speckleSmooth: GARDEN.speckleSmooth,
       };
     } else {
       HEDGE_WALL_PAL = { shadow:'rgba(36,101,52,', wallBase:'#246534', wallLiner:GARDEN.hedgeMid };

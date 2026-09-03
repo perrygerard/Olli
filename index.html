@@ -2601,8 +2601,14 @@
       }
     }
   }
+  // EXPERIMENT: fog of war lifted on the hedge levels only, to playtest
+  // whether an open, fully-visible maze (light meter and everything else
+  // untouched) feels better than exploring it under fog -- every other world
+  // still reads brightnessOf exactly as before. Easy to revert: delete this
+  // one early-return.
   function brightnessOf(i){
     if (won) return 0.62;                                    // the way lights up on arrival
+    if (WORLDS[curWorld] && WORLDS[curWorld].skin === 'garden') return 1;
     if (nearDepth.has(i)){
       let b = 1 - nearDepth.get(i)/sightReach;               // smooth falloff that breathes with the light
       b = b<=0 ? 0 : (b>=1 ? 1 : b*b*(3-2*b));

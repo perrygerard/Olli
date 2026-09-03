@@ -667,15 +667,21 @@
   // difficulty ramps smoothly across all levels
   function levelParams(i){
     const d = TOTAL > 1 ? i/(TOTAL-1) : 0;
+    // EXPERIMENT: hedge levels only, alongside the fog-of-war lift above --
+    // bigger mazes (since there's no fog left to make a small one feel like
+    // enough space) and every ember required, not just a share of them, so
+    // reaching the exit means having actually covered the whole level. Other
+    // worlds still get the original numbers unchanged.
+    const isGarden = WORLDS[worldOf(i)] && WORLDS[worldOf(i)].skin === 'garden';
     return {
-      cols: Math.round(11 + d*17),      // 11 → 28
-      rows: Math.round(15 + d*23),      // 15 → 38
+      cols: Math.round((11 + d*17) * (isGarden ? 1.4 : 1)),      // 11 → 28, ×1.4 for hedge
+      rows: Math.round((15 + d*23) * (isGarden ? 1.4 : 1)),      // 15 → 38, ×1.4 for hedge
       drain: 0.015 + d*0.013,           // 0.015 → 0.028 : new ground costs real light
       density: 0.035 - d*0.012,         // ember (exit-key) density
       lightStart: 0.58 - d*0.10,        // 0.58 → 0.48 : start with less cushion
-      reachSpan: 3.2 - d*1.0,           // sight reaches a little less far
+      reachSpan: 3.2 - d*1.0,           // sight reaches a little less far (moot for hedge, fog's off)
       braid: 0.05 + d*0.18,             // 0.05 → 0.23 : loops & alternate routes, not one line
-      needFrac: 0.40 + d*0.45,          // 0.40 → 0.85 : share of embers needed to open the exit
+      needFrac: isGarden ? 1 : (0.40 + d*0.45),   // hedge: every ember; others: 0.40 → 0.85
       flameDensity: 0.022 - d*0.008,    // 0.022 → 0.014 : flames (light fuel) — scarcer higher up
     };
   }
@@ -2601,14 +2607,18 @@
       }
     }
   }
-  // EXPERIMENT: fog of war lifted on the hedge levels only, to playtest
+  // EXPERIMENT: fog of war lifted on the hedge and island levels, to playtest
   // whether an open, fully-visible maze (light meter and everything else
-  // untouched) feels better than exploring it under fog -- every other world
-  // still reads brightnessOf exactly as before. Easy to revert: delete this
-  // one early-return.
+  // untouched) feels better than exploring it under fog -- card and iso still
+  // read brightnessOf exactly as before. Easy to revert: delete this
+  // one early-return. For island specifically this also means the "island
+  // expanding" band-growth animation now only ever plays once, for the whole
+  // map at once, right at level load (every cell's own islandCellBornT lands
+  // on the same first frame instead of staggering in as you walk) -- after
+  // that one-time reveal nothing changes as you move, which is the point.
   function brightnessOf(i){
     if (won) return 0.62;                                    // the way lights up on arrival
-    if (WORLDS[curWorld] && WORLDS[curWorld].skin === 'garden') return 1;
+    if (WORLDS[curWorld] && (WORLDS[curWorld].skin === 'garden' || WORLDS[curWorld].skin === 'island')) return 1;
     if (nearDepth.has(i)){
       let b = 1 - nearDepth.get(i)/sightReach;               // smooth falloff that breathes with the light
       b = b<=0 ? 0 : (b>=1 ? 1 : b*b*(3-2*b));

@@ -71,7 +71,11 @@
   .topbar{
     position:absolute;left:0;right:0;top:0;
     display:flex;flex-direction:column;gap:16px;
-    padding:max(20px,calc(env(safe-area-inset-top) + 10px)) 4px 4px;
+    /* bottom padding was 4px, sized for the light track's own row to sit right
+       above the panel's edge -- now that the track is hidden (light meter
+       removed), 10px in its place so the LVL/goal/time row still gets some
+       breathing room below it instead of running flush to the panel's edge. */
+    padding:max(20px,calc(env(safe-area-inset-top) + 10px)) 4px 10px;
     background:#faf8f3;border-radius:0;
     box-shadow:0 16px 40px -10px rgba(0,0,0,.25), 0 4px 14px rgba(0,0,0,.10);
     z-index:5;
@@ -204,24 +208,65 @@
   .win .row{display:flex;gap:12px;width:100%;max-width:320px;opacity:0;}
   .win.show .row{animation:winRiseIn .4s cubic-bezier(.22,.9,.32,1) .76s both;}
 
-  /* world map */
-  /* The page is paper the cards are laid on, not a night sky: the worlds carry the
-     colour now, and a light ground is what lets three very different ones sit side by
-     side without one of them looking like it is lit wrong. */
-  /* No side padding here: the deck runs the full width so a card can sit closer to the
-     edge and the next world still shows past it. What little inset the cards need comes
-     from the deck's own padding, which the shadow can spill into. */
-  .sheet{position:absolute;inset:0;touch-action:pan-y;display:none;flex-direction:column;z-index:9;padding:16px 0;
-    /* No justify-content:center here on purpose — centering an overflowing flex
-       container clips its leading edge in a way you can't scroll back to, and these
-       cards are tall enough now to overflow on shorter screens. Top-aligned with the
-       deck's own padding-block is the safe version of "centered". */
-    background:#F8FAF6 url(data:image/png;base64,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) repeat;overflow-y:auto;overflow-x:hidden;
-    padding-top:max(12px,env(safe-area-inset-top));}
-  .sheet.show{display:flex;animation:fade .28s ease both;}
-  /* the world's own light, washed across the page behind the cards */
-  .mapbg{display:none;}   /* uniform background now (#F8FAF6 + noise on .sheet), not per-world tinted */
-  .deck{position:relative;z-index:1;}
+  /* world-select card -- floats over the still-live board behind it (see openMap()
+     in the script: the real game canvas keeps rendering/animating while this is
+     open) instead of painting its own separate scene, so "the level you're on" is
+     always literal, not a lookalike. */
+  .sheet{position:absolute;inset:0;touch-action:none;display:none;z-index:9;
+    background:none;}
+  .sheet.show{display:block;animation:fade .28s ease both;}
+  /* still catches every pointer event across the full screen (same as before --
+     gameplay input on the canvas underneath must stay blocked while this is open),
+     it just has no painted background of its own any more, and handles horizontal
+     swipe itself (setMenuWorld) instead of native scrolling. */
+  /* a soft colour wash toward whichever world's card is currently being previewed
+     -- shown only while that differs from the world you're actually standing in
+     (see setMenuWorld()); the real board stays visible underneath either way. */
+  .wcPreviewBg{position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none;}
+  /* the card itself: floats with a margin so the live board shows all around it --
+     bottom taller than the sides so the swipe dots below have room to breathe.
+     transform is driven live by menuSwipe() while dragging (tracking the finger
+     1:1, transition disabled via .sheet.dragging below) and eased back to 0 (or
+     off past the edge, on a committed swipe) once the gesture ends. */
+  .wcCard{position:absolute;left:20px;right:20px;bottom:40px;
+    background:#faf7ef;border-radius:28px;
+    box-shadow:0 10px 34px rgba(0,0,0,.28);
+    padding:26px 26px 24px;box-sizing:border-box;
+    transform:translateX(0);transition:transform .32s cubic-bezier(.2,.8,.2,1);
+    font-family:'Space Grotesk',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  /* while an active drag is in progress, every layer that moves/fades with the
+     finger tracks it exactly -- no easing lag -- then the base transitions above
+     take back over the instant the gesture ends (commit or snap-back alike). */
+  .sheet.dragging .wcCard, .sheet.dragging .wcDots, .sheet.dragging .wcPreviewBg{transition:none;}
+  .wcTitle{margin:0 0 18px;text-align:center;font-size:32px;font-weight:700;
+    letter-spacing:.2px;color:var(--wcAccent,#2c7038);}
+  .wcRows{display:flex;flex-direction:column;}
+  .wcRow{display:flex;align-items:center;gap:10px;padding:13px 10px;border-radius:14px;
+    cursor:pointer;}
+  .wcRow.cur{background:#F8F3EA;}
+  .wcName{flex:1;font-size:16.5px;font-weight:600;color:#242017;}
+  .wcRow.locked .wcName{color:#b9b2a2;}
+  .wcTime{font-size:13.5px;color:#8f887a;min-width:34px;}
+  /* fixed width (not just padding) so e.g. "2/7" and "0/12" occupy the same box --
+     otherwise the pill's own width varies with digit count, which shifts how far
+     right the whole (time, treat, chevron) group sits and drifts "time" out of
+     alignment between rows even though .wcTime itself has a fixed width. */
+  .wcTreat{display:flex;align-items:center;justify-content:center;gap:4px;
+    background:#f3e6cc;border-radius:14px;padding:4px 9px 4px 6px;
+    width:60px;box-sizing:border-box;flex:none;}
+  .wcRow.cur .wcTreat{background:#eadbbd;}
+  .wcTreat svg{width:16px;height:18px;display:block;}
+  .wcTreat b{font-size:13.5px;font-weight:600;color:#6a3a22;}
+  .wcChev{width:16px;height:16px;color:#c3bcac;flex:none;}
+  .wcLock{width:16px;height:16px;color:#c3bcac;flex:none;margin-left:auto;}
+  /* page dots, in the margin below the card, indicating you can swipe to the other
+     wired worlds */
+  .wcDots{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+    transition:transform .32s cubic-bezier(.2,.8,.2,1);
+    display:flex;align-items:center;gap:6px;background:rgba(20,20,20,.34);
+    border-radius:999px;padding:5px 8px;}
+  .wcDot{width:5px;height:5px;border-radius:999px;background:rgba(255,255,255,.55);}
+  .wcDot.active{width:14px;background:#fff;}
   /* the source sits above the frame — only its falloff is ever on screen, so the light
      reads as spilling in from somewhere out of view rather than as a lamp in the layout. */
   @keyframes litbreathe{
@@ -497,8 +542,22 @@
     </div>
 
       <div class="sheet" id="map">
-        <canvas class="mapbg" id="mapBg" aria-hidden="true"></canvas>
-        <div class="deck" id="mapDeck"></div>
+        <!-- #stage/#c keep rendering the real, live board underneath while this is
+             open (see openMap()). wcPreviewBg only shows while previewing a world
+             other than the one you're actually standing in -- painted on demand via
+             the existing paintScene()/SCENES renderers (see setMenuWorld()), the
+             same per-world "flavor scene" the old card thumbnails used. -->
+        <canvas class="wcPreviewBg" id="wcPreviewBg"></canvas>
+        <!-- painted with whichever neighbor world you're dragging toward and
+             faded in live over wcPreviewBg as the drag progresses (see
+             menuSwipe()) -- once it reaches full opacity it's visually
+             indistinguishable from having already committed the switch. -->
+        <canvas class="wcPreviewBg" id="wcPreviewBgNext"></canvas>
+        <div class="wcCard" id="wcCard">
+          <h2 class="wcTitle" id="wcTitle">Hedge</h2>
+          <div class="wcRows" id="wcRows"></div>
+        </div>
+        <div class="wcDots" id="wcDots"></div>
       </div>
   </div>
 
@@ -512,6 +571,10 @@
   const elEmbers = document.getElementById('embers');
   const elLightFill = document.getElementById('lightFill');
   const elTrack = elLightFill.parentElement;
+  // EXPERIMENT: light meter pulled out of the top bar, alongside removing
+  // flames and no-longer-draining light above -- one-line revert, delete
+  // this line and the bar/panel goes back to reserving space for it.
+  elTrack.style.display = 'none';
   const elHint = document.getElementById('hint');
   const winEl = document.getElementById('win');
   const markEl = document.querySelector('.mark');
@@ -579,11 +642,15 @@
       low(){ tone(root*0.5, 0.13, 0.6, 'sine', 300, true); },
       tap(){ tone(sfreq(5), 0.045, 0.14, 'sine', 2200, true); },
       ui(){ tone(root*2, 0.035, 0.08, 'sine', 3000, false); },
-      ambient(lightLvl, beaconCells, active){ if(!ready) return; const t=now();
-        drGain.gain.setTargetAtTime(active?0.09:0, t, 0.6);
-        const bp = Math.max(0, Math.min(1, 1 - beaconCells/14));
-        beaconGain.gain.setTargetAtTime(active? bp*bp*0.045 : 0, t, 0.25);
-        shimGain.gain.setTargetAtTime(active? Math.max(0,lightLvl-0.12)*0.028 : 0, t, 0.5); }
+      // EXPERIMENT: the continuous background drone/beacon/shimmer removed --
+      // the per-action sound effects above (trace, ember, flame, exitOpen,
+      // win, low, tap, ui) are untouched, this only silences the musical tone
+      // that hummed underneath a level the whole time you played it. The
+      // oscillators themselves are still created in ensure()/retune() (so
+      // setWorld's per-world root note keeps working without touching that
+      // code) -- they just never get their gain raised now. One-line revert:
+      // restore the three gain.setTargetAtTime calls below.
+      ambient(lightLvl, beaconCells, active){},
     };
   })();
 
@@ -613,22 +680,29 @@
     { name:'Atoll', tag:'sun and tide',    bg:'#89CF79', app:'#1f4a1c', wall:'#2f5c52', thread:'#ff8f66', threadRGB:'255,143,102', core:'#fff3e0', coreRGB:'255,243,224', start:'#f4c874', beacon:'#3ddc97', beaconRGB:'61,220,151', ember:'255,170,130' },
   ];
   const LOOK = { EMBER:0, TIDE:1, MOSS:2, GALE:3, VEIL:4, CARD:5, BLOOM:6, SPRING:7, FALL:8, WINTER:9, DEAD:10, ISLAND:11 };
-  // `levels` names the look each of the five levels wears; `art` is the island the
-  // menu card shows for the world as a whole.
+  // `levels` names the look each level wears; `art` is the look the menu card shows
+  // for the world as a whole; `card` is the short one-word title the world-select
+  // card's header uses (the fuller `name` is more of a subtitle/tagline).
+  // Four levels per world (LEVELS_PER_WORLD below) -- garden's arc used to run a
+  // fifth, bloomless "Husk" level (LOOK.DEAD) after Winter; iso's fifth level wore
+  // Veil. Both LOOK entries (and their GARDEN_PALETTES/LOOK_FX rows) still exist,
+  // just unused by any world's lineup right now -- easy to bring either back as a
+  // level 5 later without rebuilding a look from scratch.
   const WORLDS = [
-    { skin:'garden', name:'Over the Hedge',  tag:'a clipped garden, in paper',
-      // the garden ages as you go deeper: spring, the current summer look, fall, winter,
-      // then a fifth level with nothing left in bloom at all
-      art:LOOK.MOSS,  levels:[LOOK.SPRING, LOOK.BLOOM, LOOK.FALL, LOOK.WINTER, LOOK.DEAD] },
-    { skin:'iso',   name:'Mining for Light', tag:'the light you carry',
-      art:LOOK.EMBER, levels:[LOOK.EMBER, LOOK.TIDE, LOOK.MOSS, LOOK.GALE, LOOK.VEIL] },
-    { skin:'card',  name:'Cut it Out',   tag:'folded flat',
-      art:LOOK.VEIL,  levels:[LOOK.CARD, LOOK.CARD, LOOK.CARD, LOOK.CARD, LOOK.CARD] },
-    // one look for now (all five levels wear Atoll) -- ISLAND_PALETTES/drawIsland
+    // accent: the world-card menu's title color + preview tint (see setMenuWorld) --
+    // matches the approved menu_worldcard_mockup.html values 1:1.
+    { skin:'garden', name:'Over the Hedge',  tag:'a clipped garden, in paper', card:'Hedge', accent:'#2c7038',
+      // the garden ages as you go deeper: spring, the current summer look, fall, then winter
+      art:LOOK.MOSS,  levels:[LOOK.SPRING, LOOK.BLOOM, LOOK.FALL, LOOK.WINTER] },
+    { skin:'iso',   name:'Mining for Light', tag:'the light you carry', card:'Cave', accent:'#c0532a',
+      art:LOOK.EMBER, levels:[LOOK.EMBER, LOOK.TIDE, LOOK.MOSS, LOOK.GALE] },
+    { skin:'card',  name:'Cut it Out',   tag:'folded flat', card:'Cards', accent:'#8a5f2c',
+      art:LOOK.VEIL,  levels:[LOOK.CARD, LOOK.CARD, LOOK.CARD, LOOK.CARD] },
+    // one look for now (all four levels wear Atoll) -- ISLAND_PALETTES/drawIsland
     // are built to take more LOOK entries later the same way GARDEN_PALETTES does,
     // so this world can grow new levels without a renderer change.
-    { skin:'island', name:'Castaway',    tag:'an island, uncovering',
-      art:LOOK.ISLAND, levels:[LOOK.ISLAND, LOOK.ISLAND, LOOK.ISLAND, LOOK.ISLAND, LOOK.ISLAND] },
+    { skin:'island', name:'Castaway',    tag:'an island, uncovering', card:'Island', accent:'#3a8a72',
+      art:LOOK.ISLAND, levels:[LOOK.ISLAND, LOOK.ISLAND, LOOK.ISLAND, LOOK.ISLAND] },
   ];
   // per-look atmosphere: drifting particles + a floor texture, so each place feels like one
   const LOOK_FX = [
@@ -653,7 +727,7 @@
   const mixRGB = (a,b,t)=>`rgb(${(a[0]+(b[0]-a[0])*t)|0},${(a[1]+(b[1]-a[1])*t)|0},${(a[2]+(b[2]-a[2])*t)|0})`;
   let wallCoreRGB = [90,106,114], wallHiRGB = [150,164,172], bgRGB = [14,23,27];
   const WALL_SHADOW = [4,7,11];
-  const LEVELS_PER_WORLD = 5;
+  const LEVELS_PER_WORLD = 4;
   const TOTAL = WORLDS.length * LEVELS_PER_WORLD;
   const worldOf = i => Math.floor(i / LEVELS_PER_WORLD);
   const PREVIEW_UNLOCK = true;   // TEMP: unlock every level for previewing the worlds
@@ -684,6 +758,32 @@
       needFrac: isGarden ? 1 : (0.40 + d*0.45),   // hedge: every ember; others: 0.40 → 0.85
       flameDensity: 0.022 - d*0.008,    // 0.022 → 0.014 : flames (light fuel) — scarcer higher up
     };
+  }
+  // ---- per-level records: best (fastest) clear time + treats collected that run,
+  // keyed by level index -- what the world-select card's rows actually display.
+  // Separate from SAVES (an in-progress level's live bookmark) and from `beaten`
+  // (just a watermark of how far you've gotten) -- this is the only place a
+  // level's own best-run stats persist.
+  let levelRecords = {};    // { [levelIndex]: { time: ms, got: int, total: int } }
+  function loadLevelRecords(){
+    try {
+      const o = JSON.parse(localStorage.getItem('thread_level_records') || '{}');
+      if (o && typeof o === 'object') levelRecords = o;
+    } catch(e){ levelRecords = {}; }
+  }
+  function saveLevelRecords(){
+    try { localStorage.setItem('thread_level_records', JSON.stringify(levelRecords)); }
+    catch(e){}                       // a full quota just means records live in memory only
+  }
+  // called from doWin() with that run's own elapsed/got/total -- only overwrites a
+  // level's record if this run beat (or set) its best time, so replaying an old
+  // level slower than your best never erases the good run.
+  function recordLevelResult(i, timeMs, got, total){
+    const prev = levelRecords[i];
+    if (!prev || timeMs < prev.time){
+      levelRecords[i] = { time: timeMs, got, total };
+      saveLevelRecords();
+    }
   }
   function loadProgress(){ try{ const v=parseInt(localStorage.getItem('thread_progress')); if(!isNaN(v)) beaten=Math.max(0,Math.min(TOTAL,v)); }catch(e){} }
   function saveProgress(){ try{ localStorage.setItem('thread_progress', String(beaten)); }catch(e){} }
@@ -1019,11 +1119,7 @@
   // fixed markup rather than something rebuilt from T.skin/T.beacon/T.core each time.
   function renderGoalIcon(){
     if (!elGoalIcon) return;
-    elGoalIcon.innerHTML = '<svg viewBox="0 0 18 21" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-      '<rect x="8" width="2" height="8" rx="1" fill="#595349"/>' +
-      '<circle cx="9" cy="12" r="9" fill="#FF2828"/>' +
-      '<ellipse cx="12.8284" cy="7.82844" rx="1.5" ry="2.5" transform="rotate(-45 12.8284 7.82844)" fill="#FFE8BE"/>' +
-      '</svg>';
+    elGoalIcon.innerHTML = TREAT;    // shared with the world-select card's treat pill
   }
 
   // Olli himself, at the head of the trail: a fixed round "game piece" token, the
@@ -1261,6 +1357,14 @@
   const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>';
   const FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3 4 4.2 4 8a4 4 0 0 1-8 0c0-1.6.6-2.6 1.2-3.2.2 1.1 1 1.7 1.6 1.7C9.6 7 11 4 12 2z"/></svg>';
   const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10.5V8a5 5 0 0 1 10 0v2.5"/><rect x="5.5" y="10.5" width="13" height="9.5" rx="2.4" fill="currentColor" stroke="none"/></svg>';
+  const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  // the goal/treat icon -- shared by the topbar's goalIcon (renderGoalIcon, below) and
+  // the world-select card's per-level treat pill, so both read as the exact same treat.
+  const TREAT = '<svg viewBox="0 0 18 21" fill="none" xmlns="http://www.w3.org/2000/svg">'
+    + '<rect x="8" width="2" height="8" rx="1" fill="#595349"/>'
+    + '<circle cx="9" cy="12" r="9" fill="#FF2828"/>'
+    + '<ellipse cx="12.8284" cy="7.82844" rx="1.5" ry="2.5" transform="rotate(-45 12.8284 7.82844)" fill="#FFE8BE"/>'
+    + '</svg>';
   // ---- island art: isometric block terrain ----
   // Every island is a grid of extruded blocks: a lit top face plus two shaded side
   // faces, painted back to front so nearer columns cover the ones behind. Elevation
@@ -2065,6 +2169,224 @@
     (SCENES[wi] || SCENES[0])(g, r.width, r.height, cs, ox, oy);
   }
 
+  // A standalone maze generator for the world-select card's swipe preview only --
+  // the exact same randomized-DFS carve + braid + island-room-carving algorithm
+  // genMaze() uses for real levels, but working entirely on its own local
+  // cols/rows/cells/idx rather than the live module state. Building a preview
+  // maze this way can never disturb the level actually in progress behind the
+  // menu, since it touches none of the shared game-state variables genMaze()
+  // itself reads and writes (cur, cols, rows, cells, curWorld, ...).
+  function genPreviewMaze(pcols, prows, braidAmt, carveRooms){
+    const pidx = (c,r) => r*pcols + c;
+    const cells = Array.from({length: pcols*prows}, () => ({ walls:[true,true,true,true], v:false }));
+    const stack = [];
+    let cur = pidx(0,0); cells[cur].v = true;
+    const dirs = [[0,-1,0,2],[1,0,1,3],[0,1,2,0],[-1,0,3,1]];
+    let count = 1;
+    while (count < pcols*prows){
+      const c = cur % pcols, r = (cur - (cur % pcols)) / pcols;
+      const nbrs = [];
+      for (const [dc,dr,w,ow] of dirs){
+        const nc = c+dc, nr = r+dr;
+        if (nc>=0 && nc<pcols && nr>=0 && nr<prows && !cells[pidx(nc,nr)].v) nbrs.push([pidx(nc,nr),w,ow]);
+      }
+      if (nbrs.length){
+        const [ni,w,ow] = nbrs[(Math.random()*nbrs.length)|0];
+        cells[cur].walls[w] = false; cells[ni].walls[ow] = false;
+        stack.push(cur); cur = ni; cells[cur].v = true; count++;
+      } else cur = stack.pop();
+    }
+    if (braidAmt > 0){
+      const closed = [];
+      for (let r=0; r<prows; r++) for (let c=0; c<pcols; c++){
+        const i = pidx(c,r);
+        if (c<pcols-1 && cells[i].walls[1]) closed.push([i, pidx(c+1,r), 1, 3]);
+        if (r<prows-1 && cells[i].walls[2]) closed.push([i, pidx(c,r+1), 2, 0]);
+      }
+      for (let k=closed.length-1; k>0; k--){ const j=(Math.random()*(k+1))|0; [closed[k],closed[j]]=[closed[j],closed[k]]; }
+      const openCount = Math.floor(closed.length * braidAmt);
+      for (let k=0; k<openCount; k++){ const [a,b,w,ow]=closed[k]; cells[a].walls[w]=false; cells[b].walls[ow]=false; }
+    }
+    const rooms = [];
+    if (carveRooms){
+      const roomCount = Math.max(1, Math.min(3, Math.floor((pcols*prows)/220)));
+      const tries = roomCount*14;
+      for (let t=0; t<tries && rooms.length<roomCount; t++){
+        const rw = 2 + ((Math.random()*2)|0), rh = 2 + ((Math.random()*2)|0);
+        const rc = 2 + ((Math.random()*Math.max(1,pcols-rw-4))|0);
+        const rr = 2 + ((Math.random()*Math.max(1,prows-rh-4))|0);
+        if (rc+rw >= pcols-1 || rr+rh >= prows-1) continue;
+        if (rc < 4 && rr < 4) continue;
+        let clash = false;
+        for (const rm of rooms){
+          if (rc < rm.c+rm.w+2 && rc+rw+2 > rm.c && rr < rm.r+rm.h+2 && rr+rh+2 > rm.r){ clash = true; break; }
+        }
+        if (clash) continue;
+        for (let r=rr; r<rr+rh; r++) for (let c=rc; c<rc+rw; c++){
+          const i = pidx(c,r);
+          if (c+1 < rc+rw){ cells[i].walls[1] = false; cells[pidx(c+1,r)].walls[3] = false; }
+          if (r+1 < rr+rh){ cells[i].walls[2] = false; cells[pidx(c,r+1)].walls[0] = false; }
+        }
+        rooms.push({ c:rc, r:rr, w:rw, h:rh });
+      }
+    }
+    return { cells, rooms, idx:pidx };
+  }
+
+  // The cave/iso world's own real wall art -- isoDrawWallLayer/isoFloorBand/
+  // isoPalettePair are already pure functions (segments + size + palette +
+  // offset in, pixels on the given context out; no read of the live game's
+  // cols/rows/cells/camera), so they can paint a genuinely fresh, randomly
+  // generated maze here exactly as they paint the real level, with zero risk
+  // to the live game running behind the menu. Shown fully lit throughout --
+  // there's no player position to be "near", so there's no dark half to blend.
+  function paintCavePreview(cv, wi){
+    const r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const d = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(r.width*d); cv.height = Math.round(r.height*d);
+    const g = cv.getContext('2d');
+    g.setTransform(d,0,0,d,0,0);
+
+    const p = levelParams(wi*LEVELS_PER_WORLD + 1);         // same sizing formula a real level uses
+    const pcols = Math.max(6, Math.round(p.cols*0.6)), prows = Math.max(8, Math.round(p.rows*0.6));
+    const s = Math.max(r.width/pcols, r.height/prows) * 1.15;   // overscan so it fills the card, not just tiles it
+    const ox = (pcols*s - r.width)/2, oy = (prows*s - r.height)/2;
+    const { cells, idx:pidx } = genPreviewMaze(pcols, prows, p.braid, false);
+    const pal = isoPalettePair(LOOKS[WORLDS[wi].art]).lit;
+
+    g.fillStyle = isoRgbStr(pal.bg); g.fillRect(0,0,r.width,r.height);
+    const cellMidFn = (c,row) => [ (c+0.5)*s - ox, (row+0.5)*s - oy ];
+    const all = []; for (let row=0; row<prows; row++) for (let c=0; c<pcols; c++) all.push([c,row]);
+    isoFloorBand(g, cellMidFn, all, s, s*1.3, isoRgbStr(pal.floorDeep));
+    isoFloorBand(g, cellMidFn, all, s, s*0.85, isoRgbStr(pal.floorTrod));
+
+    const segMap = new Map();
+    for (const [c,row] of all){
+      const i = pidx(c,row), wl = cells[i].walls;
+      const x = c*s - ox, y = row*s - oy;
+      const raw = [];
+      if (wl[0]) raw.push(x, y, x+s, y);
+      if (wl[3]) raw.push(x, y, x, y+s);
+      if (wl[1]) raw.push(x+s, y, x+s, y+s);
+      if (wl[2]) raw.push(x, y+s, x+s, y+s);
+      for (let n=0;n<raw.length;n+=4){
+        const x1=raw[n],y1=raw[n+1],x2=raw[n+2],y2=raw[n+3];
+        const a=[Math.round(x1*4),Math.round(y1*4)], b=[Math.round(x2*4),Math.round(y2*4)];
+        const [p2,q] = (a[0]<b[0] || (a[0]===b[0] && a[1]<b[1])) ? [a,b] : [b,a];
+        segMap.set(p2[0]+','+p2[1]+','+q[0]+','+q[1], [x1,y1,x2,y2]);
+      }
+    }
+    const segs = []; segMap.forEach(sv => segs.push(sv[0],sv[1],sv[2],sv[3]));
+    isoDrawWallLayer(g, segs, s, pal, ox, oy);
+  }
+
+  // Island's own real coastline-band + path-network technique (islandCorePath/
+  // paintIslandBand/the wall-seg loop in drawIsland), ported as a standalone
+  // parameterized version painted over a freshly generated maze -- including
+  // the same room-carving genMaze() does for island levels -- so this reads as
+  // an actual island layout rather than the fixed decorative corridor
+  // sceneIsland draws. Sprite decorations (palm/grass/fern) are left out: their
+  // real versions draw straight to the live canvas/cellSize and can't safely be
+  // reused off-screen, but the coastline + path shape alone already carries the
+  // "this is a real level" read.
+  function paintIslandPreview(cv, wi){
+    const r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const d = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(r.width*d); cv.height = Math.round(r.height*d);
+    const g = cv.getContext('2d');
+    g.setTransform(d,0,0,d,0,0);
+
+    const p = levelParams(wi*LEVELS_PER_WORLD + 1);
+    const pcols = Math.max(6, Math.round(p.cols*0.55)), prows = Math.max(8, Math.round(p.rows*0.55));
+    const s = Math.max(r.width/pcols, r.height/prows) * 1.15;
+    const ox = (pcols*s - r.width)/2, oy = (prows*s - r.height)/2;
+    const { cells, rooms, idx:pidx } = genPreviewMaze(pcols, prows, p.braid, true);
+    const ISL = ISLAND_PALETTES[WORLDS[wi].art] || ISLAND_PALETTES[LOOK.ISLAND];
+    const cellMid = (c,row) => [ (c+0.5)*s - ox, (row+0.5)*s - oy ];
+    const all = []; for (let row=0; row<prows; row++) for (let c=0; c<pcols; c++) all.push([c,row]);
+
+    g.fillStyle = ISL.water; g.fillRect(0,0,r.width,r.height);
+
+    function band(cellList, growPx, color){
+      g.beginPath();
+      for (const [c,row] of cellList){
+        const [x,y] = cellMid(c,row);
+        const h = s*0.51;
+        g.rect(x-h, y-h, h*2, h*2);
+      }
+      g.fillStyle = color; g.fill();
+      g.strokeStyle = color; g.lineWidth = growPx;
+      g.lineJoin = 'round'; g.lineCap = 'round';
+      g.stroke();
+    }
+    band(all, s*3.2, ISL.islandBlue);
+    band(all, s*2.4, ISL.path);
+    band(all, s*1.1, ISL.grass);
+
+    // room membership, same rule drawIsland uses: a room's own interior edges
+    // are skipped so it reads as open grass rather than a paved plaza
+    const roomOf = new Map();
+    for (const rm of rooms){
+      for (let rr=rm.r; rr<rm.r+rm.h; rr++) for (let rc=rm.c; rc<rm.c+rm.w; rc++) roomOf.set(pidx(rc,rr), rm);
+    }
+    const segs = [];
+    for (const [c,row] of all){
+      const i = pidx(c,row), wl = cells[i].walls;
+      const rmI = roomOf.get(i);
+      if (c+1<pcols){ const iE = pidx(c+1,row); if (!wl[1] && !(rmI && roomOf.get(iE)===rmI)) segs.push([c,row,c+1,row]); }
+      if (row+1<prows){ const iS = pidx(c,row+1); if (!wl[2] && !(rmI && roomOf.get(iS)===rmI)) segs.push([c,row,c,row+1]); }
+    }
+    const PATH_W = s*0.5;
+    g.strokeStyle = ISL.path; g.fillStyle = ISL.path;
+    g.lineWidth = PATH_W; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath();
+    for (const [ac,ar,bc,br] of segs){
+      const [sx,sy] = cellMid(ac,ar), [ex,ey] = cellMid(bc,br);
+      g.moveTo(sx,sy); g.lineTo(ex,ey);
+    }
+    g.stroke();
+    const touched = new Set();
+    for (const [ac,ar,bc,br] of segs){ touched.add(pidx(ac,ar)); touched.add(pidx(bc,br)); }
+    const rr0 = PATH_W/2;
+    for (const [c,row] of all){
+      const i = pidx(c,row);
+      if (touched.has(i) || roomOf.has(i)) continue;
+      const [x,y] = cellMid(c,row);
+      g.beginPath(); g.ellipse(x,y,rr0,rr0,0,0,7); g.fill();
+    }
+    g.globalAlpha = 0.4;
+    for (const [ac,ar,bc,br] of segs){
+      const [sx,sy] = cellMid(ac,ar), [ex,ey] = cellMid(bc,br);
+      for (let k=0;k<3;k++){
+        const tt = (k+0.5)/3;
+        const gx = ac+(bc-ac)*tt, gy = ar+(br-ar)*tt;
+        if (islandHash(gx*6.1, gy*6.1, k) >= 0.4) continue;
+        const px = sx+(ex-sx)*tt, py = sy+(ey-sy)*tt;
+        const jx = (islandHash(gx,gy,k+9)-0.5)*PATH_W*0.5;
+        const jy = (islandHash(gx,gy,k+21)-0.5)*PATH_W*0.32;
+        const rr = 1.6 + islandHash(gx,gy,k+3)*1.4;
+        g.fillStyle = ISL.pathSpeckle;
+        g.beginPath(); g.ellipse(px+jx,py+jy,rr,rr,0,0,7); g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+  }
+
+  // dispatcher: the world-select card's swipe preview shows an actual, freshly
+  // generated level layout in that world's own real rendering style for cave
+  // and island (the two worlds whose wall/terrain renderers turned out to be
+  // reusable off-screen); garden and card keep the decorative flavor-scene
+  // paintScene has always used, since their real renderers write straight to
+  // the live canvas and aren't safely reusable here.
+  function paintWorldPreview(cv, wi){
+    const skin = WORLDS[wi] && WORLDS[wi].skin;
+    if (skin === 'iso') return paintCavePreview(cv, wi);
+    if (skin === 'island') return paintIslandPreview(cv, wi);
+    return paintScene(cv, wi);
+  }
+
   // the five level pins sit at points along the very same SCENE_PATH the card's
   // decorative trail is drawn through (see scenePts, used by every scene renderer
   // above) -- picking indices spaced across the path's 17-cell length lands each pin
@@ -2080,424 +2402,163 @@
     return [ox + (c+0.5)*cs, oy + (r+0.5)*cs];
   }
 
-  // ---- full-bleed map, two worlds stacked in one scroll -----------------------------
-  // Garden (world 0) sits in the lower slice, where the player currently is; iso
-  // (world 1) continues in the slice above it. Each world only ever draws within its
-  // own local w x <its own slice height> box (that's what its background fill/vignette
-  // is sized against), so translating the canvas before calling it is enough to place
-  // it in the right band -- no clipping needed, the two slices can't stomp on each
-  // other because neither one's fillRect ever reaches past its own local height.
-  // FB_SLICE_H holds each slice's own height; index 0 is the bottom-most (current)
-  // world, higher indices stack upward above it, matching the vertical order they
-  // paint and scroll in.
-  const FB_SLICE_H = [1050, 850, 850];     // [garden, iso, island] -- island reuses iso's numbers as a starting point, untuned
-  const FB_BOTTOM_GAP = [200, 260, 260];  // how far each world's own pin 1 sits off ITS slice's bottom edge
-  // where slice `slot` starts, top-down: everything above it (higher slot indices)
-  // stacked first, since slot 0 is the bottom-most / last-painted slice
-  function fbSliceTop(slot){
-    let y = 0;
-    for (let s = FB_SLICE_H.length - 1; s > slot; s--) y += FB_SLICE_H[s];
-    return y;
-  }
-  function fbGeom(slot, w){
-    const cs = w/5.2, ox = -cs*0.45;
-    const oy = FB_SLICE_H[slot] - FB_BOTTOM_GAP[slot] - 8.5*cs;
-    return { cs, ox, oy };
-  }
-  // A puffy, hand-drawn-feeling cloud band bridging the seam between two worlds --
-  // built as a row of overlapping circles at varying size and height, the way a kid's
-  // drawing makes a cloud, rather than a flat gradient rectangle or trying to stretch
-  // sceneGarden's own cell-based fog (which only rounds where it meets the path, not
-  // usefully far from it) all the way up into iso's territory. Three layers in the
-  // exact same cloudLo/cloudMid/cloudHi progression and colours sceneGarden's own fog
-  // already uses -- furthest/most jittery at the back, nearest/calmest at the front --
-  // so it reads as the same clouds, just a bigger bank of them right at the boundary.
-  function paintFullbleedScene(cv){
-    const r = cv.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    const d = Math.min(window.devicePixelRatio || 1, 2);
-    cv.width = Math.round(r.width*d); cv.height = Math.round(r.height*d);
-    const g = cv.getContext('2d');
-    g.setTransform(d,0,0,d,0,0);
+  // ---- world-select card: floats over the still-live board behind it, instead of
+  // painting its own separate scene (see openMap() below -- the real gameplay
+  // canvas keeps rendering/animating the whole time this is open, same skin/level
+  // you were just playing). Wired for the three worlds with a finished skin; 'card'
+  // (Cut it Out, world index 2) isn't ready yet, same set the old flip-book's own
+  // FB_WORLDS list carried.
+  const MENU_WORLDS = [0, 1, 3];
+  let menuWorld = 0;             // which world's card is currently shown/previewed
 
-    // island, uppermost slice -- newest world, stacked above mining. No cloud bridge at
-    // this seam yet (that treatment is still garden/iso-specific below); quick-appended
-    // with plain, untuned spacing rather than holding up reachability for it.
-    {
-      const islandH = FB_SLICE_H[2];
-      const { cs, ox, oy } = fbGeom(2, r.width);
-      g.save(); g.translate(0, fbSliceTop(2));
-      sceneIsland(g, r.width, islandH, cs, ox, oy);
-      g.restore();
+  function buildWorldRows(wi){
+    const rowsEl = document.getElementById('wcRows');
+    rowsEl.innerHTML = '';
+    const w = WORLDS[wi];
+    for (let l = 0; l < LEVELS_PER_WORLD; l++){
+      const i = wi*LEVELS_PER_WORLD + l;
+      const locked = !PREVIEW_UNLOCK && i > beaten;
+      const isCur = i === cur;
+      const row = document.createElement('div');
+      row.className = 'wcRow' + (isCur ? ' cur' : '') + (locked ? ' locked' : '');
+      const name = LOOKS[w.levels[l]].name;
+      if (locked){
+        row.innerHTML = `<span class="wcName">${name}</span><span class="wcLock">${LOCK}</span>`;
+      } else {
+        // a level with no record yet (never completed, only reachable here via the
+        // TEMP PREVIEW_UNLOCK flag) shows a neutral 0:00/0-0 rather than throwing --
+        // in production (PREVIEW_UNLOCK off) every reachable row already has one,
+        // since beaten only advances past a level once it's been won.
+        const rec = levelRecords[i];
+        const time = fmt(rec ? rec.time : 0);
+        const got = rec ? rec.got : 0, total = rec ? rec.total : 0;
+        row.innerHTML = `<span class="wcName">${name}</span>
+          <span class="wcTime">${time}</span>
+          <span class="wcTreat">${TREAT}<b>${got}/${total}</b></span>
+          <span class="wcChev">${CHEV}</span>`;
+        row.addEventListener('click', () => { Snd.resume(); Snd.ui(); loadLevel(i); });
+      }
+      rowsEl.appendChild(row);
     }
-    // iso, middle slice -- hard-coded to LOOK.EMBER same as the small-card thumbnail.
-    {
-      const isoH = FB_SLICE_H[1];
-      const { cs, ox, oy } = fbGeom(1, r.width);
-      g.save(); g.translate(0, fbSliceTop(1));
-      sceneLantern(g, r.width, isoH, cs, ox, oy);
-      g.restore();
-    }
-    // garden, lower slice -- the extended trail (extraPts) runs up from pin 5 and
-    // vanishes into garden's own cloud layer well before reaching this slice's own
-    // top edge.
-    {
-      const gardenH = FB_SLICE_H[0];
-      const { cs, ox, oy } = fbGeom(0, r.width);
-      g.save(); g.translate(0, fbSliceTop(0));
-      sceneGarden(g, r.width, gardenH, cs, ox, oy, [[1,-2],[1,-1],[1,0]]);
-      g.restore();
-    }
-    // the seam cloud band itself is NOT painted here -- see buildCloudLayers/
-    // CLOUD_LAYER_DEFS below. Splitting it onto its own canvases, each with its own
-    // scroll-linked transform, is what makes the parallax possible: the terrain here
-    // stays the one fixed "ground truth" layer everything else is measured against.
   }
-  // Depth-ordered back-to-front: lo is furthest/most jittery and drawn first (also
-  // scrolls slowest -- speed furthest from 1), hi is nearest/calmest and drawn last
-  // (speed closest to 1, closest to tracking the terrain 1:1). spreadf/baseRf are kept
-  // tight so the whole band bunches close to the seam instead of reaching a long way up
-  // into iso, and the speeds sit close together (all near 1) so the parallax reads as a
-  // light drift rather than the layers visibly separating from each other on scroll.
-  const CLOUD_LAYER_DEFS = [
-    { key:'cloudLo',  baseRf:0.85, spreadf:0.70, count:7, seed:41.3, shadow:true,  speed:0.82 },
-    { key:'cloudMid', baseRf:0.95, spreadf:0.50, count:8, seed:52.7, shadow:false, speed:0.88 },
-    { key:'cloudHi',  baseRf:1.05, spreadf:0.30, count:9, seed:66.1, shadow:false, speed:0.94 },
-  ];
-  function paintCloudLayerCanvas(cv, def, w, cs, localSeamY){
-    const d = Math.min(window.devicePixelRatio || 1, 2);
-    const r = cv.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    cv.width = Math.round(r.width*d); cv.height = Math.round(r.height*d);
-    const g = cv.getContext('2d');
-    g.setTransform(d,0,0,d,0,0);
-    const GARDEN = GARDEN_PALETTES[LOOK.BLOOM];
-    const baseR = cs*def.baseRf, spread = cs*def.spreadf;
-    g.save();
-    if (def.shadow){ g.shadowColor = GARDEN.cast; g.shadowBlur = cs*0.12; g.shadowOffsetY = cs*0.10; }
-    g.fillStyle = GARDEN[def.key];
-    g.beginPath();
-    const step = w / (def.count - 1);
-    for (let i = 0; i < def.count; i++){
-      const cx = i * step;
-      const rr = baseR * (0.72 + hash(def.seed, i) * 0.56);
-      const cy = localSeamY - spread * (0.25 + hash(def.seed, i + 0.5) * 0.75);
-      g.moveTo(cx + rr, cy);
-      g.arc(cx, cy, rr, 0, Math.PI*2);
-    }
-    g.fill();
-    g.restore();
-  }
-  // Builds the 3 parallax cloud layers as their own absolutely-positioned canvases,
-  // each tall enough to hold its own puffs with margin to spare, and wires a scroll
-  // listener that keeps each one's on-screen position at seamY but lets it lag behind
-  // the real scroll by (1 - speed) -- see the comment on the listener itself for the
-  // actual formula. Called once per buildMap(), after the main scene canvas exists so
-  // fbSliceTop/fbGeom have something to measure against.
-  function buildCloudLayers(deck, w){
-    deck.querySelectorAll('.cloudLayer').forEach(el => el.remove());
-    const seamY = fbSliceTop(0), cs = fbGeom(0, w).cs;
-    const layers = CLOUD_LAYER_DEFS.map(def => {
-      const spread = cs*def.spreadf, baseR = cs*def.baseRf;
-      const top = Math.round(seamY - spread - baseR*1.6);
-      const height = Math.round(spread + baseR*3.2);
-      const cv = document.createElement('canvas');
-      cv.className = 'cloudLayer';
-      cv.style.top = top + 'px';
-      cv.style.height = height + 'px';
-      cv.dataset.speed = def.speed;
-      cv.dataset.naturalTop = top;
-      deck.appendChild(cv);
-      paintCloudLayerCanvas(cv, def, w, cs, seamY - top);
-      return cv;
+  function buildWorldDots(){
+    const dotsEl = document.getElementById('wcDots');
+    dotsEl.innerHTML = '';
+    MENU_WORLDS.forEach(wi => {
+      const d = document.createElement('div');
+      d.className = 'wcDot' + (wi === menuWorld ? ' active' : '');
+      d.addEventListener('click', () => setMenuWorld(wi));
+      dotsEl.appendChild(d);
     });
-    const sheetEl = document.getElementById('map');
-    const applyParallax = () => {
-      const st = sheetEl.scrollTop;
-      layers.forEach(cv => {
-        const speed = +cv.dataset.speed;
-        // A layer scrolling at "speed" (0..1) should appear to move only `speed` px
-        // for every 1px the real scroll moves. Left alone it moves 1:1 with the
-        // scroll (normal DOM behaviour); this transform cancels out the (1 - speed)
-        // portion of that movement, so slower layers visibly lag behind -- exactly
-        // the "further away" read parallax is going for.
-        cv.style.transform = `translateY(${(st * (1 - speed)).toFixed(1)}px)`;
-      });
-    };
-    applyParallax();
-    if (!sheetEl.dataset.cloudParallaxWired){
-      sheetEl.dataset.cloudParallaxWired = '1';
-      let queued = false;
-      sheetEl.addEventListener('scroll', () => {
-        if (queued) return;
-        queued = true;
-        requestAnimationFrame(() => { queued = false; applyParallax(); });
-      }, { passive:true });
+  }
+  function setMenuWorld(wi){
+    if (!WORLDS[wi]) return;
+    menuWorld = wi;
+    document.getElementById('wcTitle').textContent = WORLDS[wi].card;
+    document.getElementById('wcCard').style.setProperty('--wcAccent', WORLDS[wi].accent);
+    buildWorldRows(wi);
+    buildWorldDots();
+    // the previewed world's own flavor scene (paintScene/SCENES -- the same
+    // per-world card art the old thumbnail system painted), shown only while
+    // it differs from the world you're actually standing in; the real board
+    // underneath is untouched either way, this just fades in on top of it.
+    const bgCv = document.getElementById('wcPreviewBg');
+    if (wi === worldOf(cur)){
+      bgCv.style.opacity = 0;
+    } else {
+      paintWorldPreview(bgCv, wi);
+      bgCv.style.opacity = 1;
     }
+    // a direct call here (dot tap, row tap, or a committed swipe) fully resolves
+    // whatever menuSwipe() was doing -- put every layer it moves back to neutral
+    // so nothing is left mid-gesture.
+    document.getElementById('wcPreviewBgNext').style.opacity = 0;
+    document.getElementById('wcCard').style.transform = 'translateX(0)';
+    document.getElementById('wcDots').style.transform = 'translateX(-50%)';
   }
-  function fbPinPt(wi, l, w){
-    const slot = FB_WORLDS.indexOf(wi);   // slice position, which no longer always equals the world index
-    const { cs, ox, oy } = fbGeom(slot, w);
-    const [c, r] = SCENE_PATH[PIN_PATH_IDX[l]];
-    return [ox + (c+0.5)*cs, fbSliceTop(slot) + oy + (r+0.5)*cs];
-  }
+  // swipe left/right anywhere over the menu -- including on the card itself, since
+  // the card fills most of the screen and a swipe-only-on-the-sliver-of-background
+  // gesture is barely reachable. A short tap on a row/dot still falls under the
+  // distance threshold below, so it reaches that element's own click handler
+  // untouched; only an actual horizontal drag gets treated as a swipe.
+  //
+  // While dragging, the card tracks the finger (at a slight lag -- 0.85x -- for a
+  // parallax feel; the dots trail even further behind at 0.4x, a second, slower
+  // layer) and the neighbor world's own real preview (wcPreviewBgNext, painted
+  // once per drag direction rather than every move) fades in underneath in step
+  // with how far you've dragged. .sheet.dragging (CSS) strips every transition
+  // for the duration so this all tracks the finger with zero lag; letting go
+  // either commits (setMenuWorld, which itself resets every layer to neutral)
+  // or eases everything back to where it started, both animated by the same
+  // transitions the drag itself was borrowing from.
+  (function menuSwipe(){
+    let downX = null, downY = null, dragging = false, swallowClick = false;
+    let dragDir = 0, dragNextWi = -1, commitPx = 160;
+    const card = () => document.getElementById('wcCard');
+    const dots = () => document.getElementById('wcDots');
+    const nextCv = () => document.getElementById('wcPreviewBgNext');
 
-  // the world's furniture, cut from the world's own material
-  const CARD_MAT = [
-    { mat:'hedge', edge:'#2c7038', acc:'#eef7e6', onacc:'#2c7038',
-      tag:'#ffffff', tagink:'rgba(28,68,30,.8)', fibre:'hedge' },
-    { mat:'pixel', edge:'#c0532a', acc:'#8a3a1c', onacc:'#f6efe2',
-      tag:'#ffc06a', tagink:'rgba(6,9,12,.85)', fibre:null },
-    { mat:'kraft', edge:'#8a5f2c', acc:'#7a4f22', onacc:'#f0e2c2',
-      tag:'#f4ecd8', tagink:'rgba(52,36,18,.85)', fibre:'kraft' },
-    { mat:'shell', edge:'#3a8a72', acc:'#eaf6f0', onacc:'#1f5c48',
-      tag:'#ffe6b0', tagink:'rgba(20,50,40,.85)', fibre:null },
-  ];
-  const fibreCache = {};
-  function fibreURL(kind){
-    if (fibreCache[kind] !== undefined) return fibreCache[kind];
-    let cv = null;
-    if (kind === 'hedge'){ paperTile(); cv = paperTileCv; }
-    else if (kind === 'kraft'){ cardTile('face'); cv = cardTileCv.face; }
-    fibreCache[kind] = cv ? `url(${cv.toDataURL()})` : 'none';
-    return fibreCache[kind];
-  }
-  // Full-bleed worlds stacked in one scroll instead of the old swiped card deck.
-  // FB_WORLDS is which WORLDS indices are wired up, bottom to top -- garden, then iso,
-  // then island, matching FB_SLICE_H/FB_BOTTOM_GAP above (card/world 2 isn't wired in
-  // here yet, same pre-existing gap as before island was added). Every pin is tappable
-  // regardless of world right now (PREVIEW_UNLOCK already does that everywhere else in
-  // the menu); gating a world's pins on the one below it being beaten is the
-  // deliberately-deferred follow-up once this scroll itself is settled.
-  const FB_WORLDS = [0, 1, 3];
-  function buildMap(){
-    const deck = document.getElementById('mapDeck');
-    let pins = '';
-    FB_WORLDS.forEach(wi => {
-      const a = wi*LEVELS_PER_WORLD;
-      for (let l=0; l<LEVELS_PER_WORLD; l++){
-        const i = a+l, done = i<beaten, locked = !PREVIEW_UNLOCK && i>beaten;
-        const st = levelStat(i), held = i!==cur && !done && st && st.started;
-        const cls = 'pin' + (done?' done':'') + (locked?' locked':'')
-                  + (i===cur?' cur':'') + (held?' held':'');
-        const face = done ? CHECK : (locked ? LOCK : (l+1));
-        pins += `<button data-i="${i}" data-w="${wi}" data-l="${l}" ${locked?'disabled':''} class="${cls}">${face}</button>`;
+    mapEl.addEventListener('pointerdown', e => {
+      downX = e.clientX; downY = e.clientY; dragging = false; dragDir = 0; dragNextWi = -1;
+      const r = mapEl.getBoundingClientRect();
+      commitPx = Math.max(90, Math.min(220, (r.width||360) * 0.42));   // a genuine ~40% swipe commits, scaled to screen width
+    });
+    mapEl.addEventListener('pointermove', e => {
+      if (downX === null) return;
+      const dx = e.clientX - downX, dy = e.clientY - downY;
+      if (!dragging){
+        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)){
+          dragging = true;
+          mapEl.classList.add('dragging');       // strip settle transitions for the rest of this gesture
+        } else return;
+      }
+      const idx = MENU_WORLDS.indexOf(menuWorld);
+      const dir = dx < 0 ? 1 : -1;                // 1 = toward a higher MENU_WORLDS index (swipe left), -1 = lower (swipe right)
+      const nextIdx = idx + dir;
+      const hasNext = nextIdx >= 0 && nextIdx < MENU_WORLDS.length;
+      if (hasNext && dir !== dragDir){
+        dragDir = dir; dragNextWi = MENU_WORLDS[nextIdx];
+        paintWorldPreview(nextCv(), dragNextWi);   // paint once per direction change, not every move
+      } else if (!hasNext){
+        dragDir = dir; dragNextWi = -1;            // already at the end of the row -- rubber-band, nothing to preview toward
+      }
+      const resist = dragNextWi === -1 ? 0.28 : 0.85;   // rubber-band hard against an edge
+      card().style.transform = `translateX(${dx*resist}px)`;
+      dots().style.transform = `translateX(calc(-50% + ${dx*0.4}px))`;
+      nextCv().style.opacity = dragNextWi === -1 ? 0 : Math.max(0, Math.min(1, Math.abs(dx)/commitPx));
+    });
+    mapEl.addEventListener('pointerup', e => {
+      if (downX === null) return;
+      const dx = e.clientX - downX; const wasDragging = dragging; const committedWi = dragNextWi;
+      downX = null; downY = null; dragging = false;
+      if (!wasDragging) return;
+      // a real swipe just happened over a row/dot -- eat the click that would
+      // otherwise follow this same gesture and open whatever it started on.
+      swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
+      mapEl.classList.remove('dragging');   // re-enable the settle transition before the final change below
+      if (committedWi !== -1 && Math.abs(dx) >= commitPx*0.55){
+        setMenuWorld(committedWi);
+      } else {
+        card().style.transform = 'translateX(0)';
+        dots().style.transform = 'translateX(-50%)';
+        nextCv().style.opacity = 0;
       }
     });
-    deck.innerHTML = `<canvas class="fbScene"></canvas><div class="lvpins">${pins}</div>`;
-    // .fbScene's CSS height is just a pre-JS fallback -- the real height always
-    // comes from here, so a slice being added/resized (like island was) can
-    // never leave the canvas too short for its own content again. A too-short
-    // canvas doesn't error, it just silently clips whatever falls past its
-    // bottom edge, which is exactly what made garden's slice (the LAST one
-    // painted, stacked at the very bottom) render as barely a sliver of cloud
-    // and nothing else once island's height wasn't accounted for here.
-    deck.querySelector('.fbScene').style.height = FB_SLICE_H.reduce((a,b)=>a+b,0) + 'px';
-    deck.querySelectorAll('.pin').forEach(el=>{
-      const i = +el.dataset.i;
-      if (!(!PREVIEW_UNLOCK && i>beaten))
-        el.addEventListener('click', ()=>{ Snd.resume(); Snd.ui(); loadLevel(i); });
-    });
-    requestAnimationFrame(()=>{
-      const cv = deck.querySelector('.fbScene');
-      paintFullbleedScene(cv);
-      const r = cv.getBoundingClientRect();
-      let curTop = null;
-      deck.querySelectorAll('.pin').forEach(el=>{
-        const [px, py] = fbPinPt(+el.dataset.w, +el.dataset.l, r.width);
-        el.style.left = px.toFixed(1)+'px'; el.style.top = py.toFixed(1)+'px';
-        if (el.classList.contains('cur')) curTop = py;
-      });
-      // two worlds' worth of trail is taller than one screen, so land scrolled to
-      // wherever the player actually is rather than at the very top of the whole
-      // thing -- same instinct as the single-world version resting on pin 1 by
-      // default, just needing an explicit scroll now that there's more above it.
-      const sheetEl = document.getElementById('map');
-      if (curTop !== null && sheetEl) sheetEl.scrollTop = Math.max(0, curTop - sheetEl.clientHeight*0.62);
-      // built after the scroll position above is settled, so its very first paint
-      // already reflects where the page is actually resting instead of flashing at
-      // scrollTop 0 for a frame first.
-      buildCloudLayers(deck, r.width);
-    });
-  }
-
-  // ---- the menu's ground: the level background, drawn live behind the cards ----
-  // Same fill, haze and drifting motes a level uses, so the menu sits in the world it
-  // is offering. The world crossfades as you swipe between cards.
-  const bgCanvas = document.getElementById('mapBg'), bgCtx = bgCanvas.getContext('2d');
-  let bgParts = [], bgWorld = 0, bgRaf = 0;
-  function bgSeed(w, h){
-    const f = LOOK_FX[WORLDS[bgWorld].art].part;
-    bgParts = [];
-    for (let i=0; i<f.n; i++) bgParts.push({
-      x: Math.random()*w, y: Math.random()*h, ph: Math.random()*Math.PI*2,
-      r: f.size[0] + Math.random()*(f.size[1]-f.size[0]),
-    });
-  }
-  function bgResize(){
-    const r = mapEl.getBoundingClientRect(), d = Math.min(window.devicePixelRatio||1, 2);
-    if (!r.width || !r.height) return;
-    bgCanvas.width = Math.round(r.width*d); bgCanvas.height = Math.round(r.height*d);
-    bgCanvas.style.width = r.width+'px'; bgCanvas.style.height = r.height+'px';
-    bgCtx.setTransform(d,0,0,d,0,0);
-    bgSeed(r.width, r.height);
-  }
-  function bgSetWorld(wi){
-    if (wi === bgWorld || !WORLDS[wi]) return;
-    bgWorld = wi;
-    const f = LOOK_FX[WORLDS[wi].art].part;         // keep positions, take the new motes
-    bgParts.forEach(p => { p.r = f.size[0] + Math.random()*(f.size[1]-f.size[0]); });
-  }
-  /* ---- the page is the card, spread out ------------------------------------------
-     The ground behind the deck is the world's own scene rendered at a few dozen pixels
-     and then stretched across the whole page. Blowing something that small up is the
-     blur — no filter, no per-frame cost — and what comes out is a soft field of exactly
-     the colours that are on the card, in roughly the places they sit on it. Light from
-     the lantern lands where the lantern is; the dark end of the maze stays dark.
-
-     That is the part that was missing. A tint pulled from a palette can match a card,
-     but it cannot be lit by it, so the card always read as pasted on top of a coloured
-     sheet. This is derived from the art itself, so it moves when the art does.
-     -------------------------------------------------------------------------------- */
-  // A plain box blur over the tiny canvas's own pixels, run a few times to approximate a
-  // gaussian. This is done once here, baked into the bitmap, rather than leaning on the
-  // canvas context's `filter` property in bgFrame every frame — Safari doesn't support
-  // `filter` on a 2D context, so that version drew the bloom crisp there instead of soft.
-  function boxBlur(data, w, h, r){
-    const out = new Uint8ClampedArray(data.length);
-    for (let y=0;y<h;y++){
-      for (let x=0;x<w;x++){
-        let sr=0,sg=0,sb=0,sa=0,n=0;
-        for (let dy=-r;dy<=r;dy++){
-          const yy = Math.min(h-1, Math.max(0, y+dy));
-          for (let dx=-r;dx<=r;dx++){
-            const xx = Math.min(w-1, Math.max(0, x+dx));
-            const i = (yy*w+xx)*4;
-            sr+=data[i]; sg+=data[i+1]; sb+=data[i+2]; sa+=data[i+3]; n++;
-          }
-        }
-        const o = (y*w+x)*4;
-        out[o]=sr/n; out[o+1]=sg/n; out[o+2]=sb/n; out[o+3]=sa/n;
-      }
-    }
-    return out;
-  }
-
-  const mapBloomCache = {};
-  function mapBloom(wi){
-    if (mapBloomCache[wi] !== undefined) return mapBloomCache[wi];
-    let cv = null;
-    try {
-      cv = document.createElement('canvas');
-      cv.width = 34; cv.height = 60;              // deliberately tiny: the upscale is the blur
-      const g = cv.getContext('2d');
-      const cs = cv.width/5.2, ox = -cs*0.45, oy = cv.height/2 - 4.5*cs;
-      (SCENES[wi] || SCENES[0])(g, cv.width, cv.height, cs, ox, oy);
-      const id = g.getImageData(0, 0, cv.width, cv.height);
-      let data = id.data;
-      for (let pass=0; pass<3; pass++) data = boxBlur(data, cv.width, cv.height, 2);
-      id.data.set(data);
-      g.putImageData(id, 0, 0);
-    } catch(e){ cv = null; }                      // a bad frame here must not kill the map
-    return (mapBloomCache[wi] = cv);
-  }
-
-  function bgFrame(t){
-    if (!mapEl.classList.contains('show')){ bgRaf = 0; return; }
-    const w = bgCanvas.clientWidth, h = bgCanvas.clientHeight;
-    const ai = WORLDS[bgWorld].art, W_ = LOOKS[ai], fx = LOOK_FX[ai], f = fx.part;
-    // The ground is the same flat off-white the level panels sit on (topbar, cfoot) —
-    // #faf8f3 — rather than a colour pulled from the world, so the page reads as one
-    // paper the chrome and the deck are both printed on instead of two different surfaces.
-    const idc = (CARD_MAT[bgWorld] || CARD_MAT[0]).edge;
-    bgCtx.fillStyle = '#faf8f3';
-    bgCtx.fillRect(0,0,w,h);
-
-    // the card's own scene, blown up until it is only light and colour. Drawn wider and
-    // taller than the page so the interesting middle of it lands behind the card rather
-    // than its edges. SHOW_BLOOM is off for now — comparing the flat paper on its own,
-    // with nothing blurred from the level behind it, against the tinted version.
-    const SHOW_BLOOM = false;
-    const bloom = SHOW_BLOOM ? mapBloom(bgWorld) : null;
-    if (bloom){
-      const over = 1.5, bw = w*over, bh = h*over;
-      bgCtx.globalAlpha = 0.30;
-      bgCtx.drawImage(bloom, (w-bw)/2, (h-bh)/2 - h*0.04, bw, bh);
-      bgCtx.globalAlpha = 1;
-    }
-
-    /* One light, agreeing with the card's own. The pool sits where the card sits and the
-       vignette pulls the far corners down, so the page has an up and a down instead of
-       being an even field. It breathes on the same slow cycle the lantern does. */
-    const cxp = w/2, cyp = h*0.44;
-    const tc = toRGB(W_.thread).join(',');
-    const breathe = 1 + 0.06*Math.sin(t/2600);
-    const glow = bgCtx.createRadialGradient(cxp, cyp, 0, cxp, cyp, Math.max(w,h)*0.72*breathe);
-    glow.addColorStop(0,    `rgba(${tc},.20)`);
-    glow.addColorStop(0.40, `rgba(${tc},.09)`);
-    glow.addColorStop(1,    `rgba(${tc},0)`);
-    bgCtx.fillStyle = glow; bgCtx.fillRect(0,0,w,h);
-
-    const dk = toRGB(idc).map(c => Math.round(c*0.5)).join(',');
-    const vig = bgCtx.createRadialGradient(cxp, cyp, Math.min(w,h)*0.30,
-                                           cxp, cyp, Math.max(w,h)*0.86);
-    vig.addColorStop(0, `rgba(${dk},0)`);
-    vig.addColorStop(1, `rgba(${dk},.30)`);
-    bgCtx.fillStyle = vig; bgCtx.fillRect(0,0,w,h);
-    for (const p of bgParts){                        // the same drift a level uses, inked
-      p.y += f.vy; p.x += Math.sin(t/900 + p.ph) * f.drift;
-      if (p.y < -4) p.y = h+4; else if (p.y > h+4) p.y = -4;
-      if (p.x < -4) p.x = w+4; else if (p.x > w+4) p.x = -4;
-      const aa = (f.twinkle ? 0.25 + 0.5*(0.5+0.5*Math.sin(t/300 + p.ph*3)) : 0.5) * 0.34;
-      bgCtx.fillStyle = `rgba(120,96,64,${aa.toFixed(3)})`;
-      bgCtx.beginPath(); bgCtx.arc(p.x, p.y, p.r, 0, 7); bgCtx.fill();
-    }
-    bgRaf = requestAnimationFrame(bgFrame);
-  }
-  window.addEventListener('resize', ()=>{ if (mapEl.classList.contains('show')) bgResize(); });
-  // a mouse drag does not pan an overflow container, so the deck is dragged by hand;
-  // touch is left to the browser's own panning
-  (function deckDrag(){
-    const deck = document.getElementById('mapDeck');
-    let down = false, id = null, startX = 0, startAt = 0, moved = false, swallow = false;
-    deck.addEventListener('pointerdown', e => {
-      if (e.pointerType === 'touch') return;
-      down = true; moved = false; id = e.pointerId;
-      startX = e.clientX; startAt = deck.scrollLeft;
-      deck.style.scrollSnapType = 'none'; deck.style.scrollBehavior = 'auto';
-    });
-    window.addEventListener('pointermove', e => {
-      if (!down || e.pointerId !== id) return;
-      const dx = e.clientX - startX;
-      if (!moved && Math.abs(dx) > 4) moved = true;   // let a still pointer still be a tap
-      if (moved){ deck.scrollLeft = startAt - dx; e.preventDefault(); }
-    }, { passive:false });
-    window.addEventListener('pointerup', e => {
-      if (!down || e.pointerId !== id) return;
-      down = false;
-      deck.style.scrollSnapType = ''; deck.style.scrollBehavior = '';
-      if (moved){                                      // settle on whichever card is nearest
-        const step = deck.clientWidth + DECK_GAP;
-        deck.scrollTo({ left: Math.round(deck.scrollLeft/step)*step, behavior:'smooth' });
-        swallow = true;                                // only the click ending this drag
-        setTimeout(()=>{ swallow = false; }, 0);
-      }
-    });
-    deck.addEventListener('click', e => {              // a drag must not also pick a level
-      if (swallow){ e.preventDefault(); e.stopPropagation(); }
+    mapEl.addEventListener('click', e => {
+      if (swallowClick){ e.preventDefault(); e.stopPropagation(); }
     }, true);
   })();
   function openMap(){
     pauseClock(); snapLevel();                       // the level you're leaving keeps its place
     winEl.classList.remove('show'); mapEl.classList.add('show');
     document.querySelector('.device').classList.add('menu');
-    buildMap();
-    bgWorld = worldOf(cur); bgResize();
-    if (!bgRaf) bgRaf = requestAnimationFrame(bgFrame);
+    setMenuWorld(worldOf(cur));                      // always open on the world you're actually in
     Snd.resume(); Snd.ui();
   }
-  function hideMap(){ mapEl.classList.remove('show');
-    document.querySelector('.device').classList.remove('menu'); if (bgRaf){ cancelAnimationFrame(bgRaf); bgRaf = 0; } }
+  function hideMap(){
+    mapEl.classList.remove('show');
+    document.querySelector('.device').classList.remove('menu');
+  }
 
   const worldW = () => cols*cellSize;
   const worldH = () => rows*cellSize;
@@ -2569,8 +2630,12 @@
 
   // Scatter flames — pure light fuel, spread across corridors (not on embers), so keeping the
   // lantern alive is its own hunt, separate from opening the exit.
+  // EXPERIMENT: no flames placed at all -- part of pulling the light meter out
+  // of play alongside the fog-of-war removal above. Left as an early return
+  // (rather than deleting the function) so it's a one-line revert.
   function placeFlames(){
     flames = new Set();
+    return;
     const count = Math.max(4, Math.round(cols*rows * flameDensity));
     const pool = [];
     for (let i=0; i<cols*rows; i++){
@@ -2607,18 +2672,20 @@
       }
     }
   }
-  // EXPERIMENT: fog of war lifted on the hedge and island levels, to playtest
-  // whether an open, fully-visible maze (light meter and everything else
-  // untouched) feels better than exploring it under fog -- card and iso still
-  // read brightnessOf exactly as before. Easy to revert: delete this
-  // one early-return. For island specifically this also means the "island
-  // expanding" band-growth animation now only ever plays once, for the whole
-  // map at once, right at level load (every cell's own islandCellBornT lands
-  // on the same first frame instead of staggering in as you walk) -- after
-  // that one-time reveal nothing changes as you move, which is the point.
+  // EXPERIMENT: fog of war lifted on the hedge, island, and iso (cave) levels,
+  // to playtest whether an open, fully-visible maze (light meter and
+  // everything else untouched) feels better than exploring it under fog --
+  // the card skin still reads brightnessOf exactly as before. Easy to revert:
+  // delete this one early-return (or drop a skin out of the set below). For
+  // island specifically this also means the "island expanding" band-growth
+  // animation now only ever plays once, for the whole map at once, right at
+  // level load (every cell's own islandCellBornT lands on the same first
+  // frame instead of staggering in as you walk) -- after that one-time
+  // reveal nothing changes as you move, which is the point.
+  const FOG_LIFTED_SKINS = new Set(['garden', 'island', 'iso']);
   function brightnessOf(i){
     if (won) return 0.62;                                    // the way lights up on arrival
-    if (WORLDS[curWorld] && (WORLDS[curWorld].skin === 'garden' || WORLDS[curWorld].skin === 'island')) return 1;
+    if (WORLDS[curWorld] && FOG_LIFTED_SKINS.has(WORLDS[curWorld].skin)) return 1;
     if (nearDepth.has(i)){
       let b = 1 - nearDepth.get(i)/sightReach;               // smooth falloff that breathes with the light
       b = b<=0 ? 0 : (b>=1 ? 1 : b*b*(3-2*b));
@@ -2639,7 +2706,10 @@
       trail.push(next);
       inTrail.add(next);
       Snd.trace(trail.length, 1);
-      light = Math.max(0, light - DRAIN);
+      // EXPERIMENT: light no longer drains -- with no flames to refuel it
+      // (placeFlames above) and the meter itself hidden, there's nothing left
+      // to spend it on. One-line revert: restore the Math.max(0, light-DRAIN)
+      // assignment.
       if (embers.has(next)){                        // gather an ember (exit key — no light)
         embers.delete(next); emberGot++;
         Snd.ember();
@@ -2817,6 +2887,7 @@
     Snd.win();
     beaten = Math.max(beaten, cur+1); saveProgress();
     elapsed = started ? (performance.now() - startTime) : 0;
+    recordLevelResult(cur, elapsed, emberGot, emberTotal);   // feeds the world-select card's rows
     document.getElementById('wtime').firstChild.nodeValue = fmt(elapsed);
     document.getElementById('wsteps').firstChild.nodeValue = String(trail.length-1);
     document.getElementById('wembers').firstChild.nodeValue = `${emberGot}/${emberTotal}`;
@@ -2954,15 +3025,12 @@
     }
     return (tileCache[w] = set);
   }
-  function drawFloorBlock(i,b,x,y,s,t){
-    const set = blockTiles(curLook);
-    const tile = set.animated
-      ? set.tiles[Math.floor(t/120) % set.tiles.length]         // water ripples in sync
-      : set.tiles[Math.floor(hash(i,7)*set.tiles.length) % set.tiles.length];
-    ctx.globalAlpha = Math.min(1, 0.12 + 0.88*b);
-    ctx.drawImage(tile, x, y, s+0.6, s+0.6);        // slight overlap avoids seams when scaled
-    ctx.globalAlpha = 1;
-  }
+  // NOTE: drawFloorBlock (the per-cell pixel-block floor renderer) used to live
+  // here and was iso's only caller of it -- removed now that drawIso paints its
+  // floor via the carved-rock bake instead. blockTiles/genTile/wallStoneTile/BLOCK
+  // above stay, since the mine's own world-select card thumbnail (sceneLantern)
+  // still uses them for its art; that thumbnail hasn't been ported to the new
+  // technique yet, so it will look different from actual gameplay until it is.
 
   // ---- render ----
   /* ---- skins ----------------------------------------------------------------
@@ -3006,98 +3074,272 @@
     return (wallStoneCache[key] = ctx.createPattern(cv, 'repeat'));
   }
 
+  /* ---- carved-rock cave technique -------------------------------------------
+     Replaces the old per-cell pixel-block floor + brick-mortar wall (the code's
+     own comment literally called it "Minecraft-Dungeons-style") with two full
+     renders of the maze per look -- a muted "explored memory" version and a
+     genuinely brighter "in your light's reach" version -- composited through a
+     soft mask built from the SAME brightnessOf() fog-of-war values the game
+     already tracks (corridor-distance falloff, walls block it, cells the light
+     hasn't reached yet still render nothing at all). This is a new paint
+     technique for an unchanged fog mechanic, not a new lighting system.
+     Walls are a chain of jagged hard-cut polygons (irregular facets) instead of
+     a uniform stroked strip, matching the hedge/island worlds' own paper-cut
+     language instead of a stone texture. Confirmed against all five of the
+     mine's own looks in a standalone mockup; gold (#FEC377) is the one fixed
+     colour "the light you carry" renders as in every one of them, the same way
+     Olli's own trail bead is a fixed green in every world.
+     ---------------------------------------------------------------------------- */
+  const ISO_LIGHT_RGB = '254,195,119';   // #FEC377 -- always gold, in every iso look
+  const isoShade = (rgb, amt) => {
+    const f = c => amt>=0 ? c+(255-c)*amt : c*(1+amt);
+    return [f(rgb[0]),f(rgb[1]),f(rgb[2])].map(v => Math.max(0,Math.min(255,v))|0);
+  };
+  const isoRgbStr = rgb => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  // the two-layer cave lighting confirmed in the mockups: a muted "dark cave"
+  // palette and a genuinely brighter "in your light's reach" palette,
+  // composited through a soft mask (see isoAmbient/bakeIsoScene below). Fog
+  // itself is lifted for iso now (the whole map is always visible), but the
+  // mood -- dim cave, warm lit pool around the player -- is a look, not a
+  // visibility mechanic, so it stays.
+  function isoPalettePair(look){
+    const wallArr = toRGB(look.wall), bgArr = toRGB(look.bg);
+    return {
+      dark: {
+        bg:        isoShade(bgArr, -0.35),
+        floorDeep: isoShade(wallArr, -0.68),
+        floorTrod: isoShade(wallArr, -0.58),
+        wallRim:   isoShade(wallArr, -0.55),
+        wallBase:  isoShade(wallArr, -0.40),
+        wallLit:   isoShade(wallArr, -0.20),
+      },
+      lit: {
+        bg:        bgArr,
+        floorDeep: isoShade(wallArr, -0.45),
+        floorTrod: isoShade(wallArr, -0.10),
+        wallRim:   isoShade(wallArr, -0.15),
+        wallBase:  wallArr,
+        wallLit:   isoShade(wallArr, 0.35),
+      },
+    };
+  }
+  // corridor-distance falloff from the player's own head, same formula as the
+  // fog-mechanic's brightnessOf() used before fog was lifted -- but this one
+  // is purely cosmetic (how much EXTRA light blends in near the player) and
+  // is never gated by FOG_LIFTED_SKINS, since the whole map already renders
+  // regardless. Cells outside the light's reach return 0: they show the dark
+  // palette only, which is itself dim-but-visible, not black.
+  function isoAmbient(i){
+    if (won) return 1;                                       // "the way lights up on arrival"
+    if (!nearDepth.has(i)) return 0;
+    let b = 1 - nearDepth.get(i)/sightReach;
+    return b<=0 ? 0 : (b>=1 ? 1 : b*b*(3-2*b));
+  }
+  // a jagged N-sided polygon (straight edges, jittered vertex radius AND angle)
+  // -- the "hard cut" rock silhouette confirmed in the mockup. Overlapping
+  // polygons still merge into one clean silhouette under fill()'s winding rule,
+  // same as overlapping circles would, so a chain of these reads as one
+  // continuous boulder ridge with irregular facets instead of rounded lobes.
+  function isoPolyBlob(g, cx0, cy0, baseR, seed){
+    const sides = 5 + Math.floor(hash(seed+1, 0)*3);
+    const angJit = (Math.PI*2/sides) * 0.35;
+    let a = hash(seed+2, 0)*Math.PI*2;
+    for (let i=0;i<sides;i++){
+      const r = baseR * (0.72 + hash(seed+10+i, 0)*0.5);
+      const ang = a + (hash(seed+20+i, 0)-0.5)*angJit;
+      const px = cx0 + Math.cos(ang)*r, py = cy0 + Math.sin(ang)*r;
+      if (i===0) g.moveTo(px,py); else g.lineTo(px,py);
+      a += Math.PI*2/sides;
+    }
+    g.closePath();
+  }
+  function isoBlobPath(g, segs, s, baseR, jitter, offX, offY, ox, oy){
+    g.beginPath();
+    for (let n=0;n<segs.length;n+=4){
+      const x1=segs[n],y1=segs[n+1],x2=segs[n+2],y2=segs[n+3];
+      const len = Math.hypot(x2-x1,y2-y1) || 1, ux=(x2-x1)/len, uy=(y2-y1)/len;
+      const step = Math.max(10, s*0.30);
+      // seed from WORLD-space coordinates (bake-local x1,y1... + the bake's own
+      // anchor ox,oy) so a given physical wall always jitters the same way no
+      // matter where the camera/bake-anchor happens to sit -- using the
+      // bake-local coordinates alone made every wall reseed (and reshape) on
+      // every camera pan or fog-triggered rebuild, since ox,oy shift.
+      const seed = (x1+ox)*13.1 + (y1+oy)*7.7 + (x2+ox)*3.3 + (y2+oy)*11.9;
+      for (let d=0; d<=len; d += step){
+        const jr = baseR * (1 - jitter*0.5 + hash(seed+d*0.7, 0)*jitter);
+        const jx = (hash(seed+d*1.3, 0)-0.5)*baseR*0.35, jy = (hash(seed+d*2.1, 0)-0.5)*baseR*0.35;
+        const px = x1+ux*d+jx+offX, py = y1+uy*d+jy+offY;
+        isoPolyBlob(g, px, py, jr, seed+d*3.7);
+      }
+      const px = x2+offX, py = y2+offY, jr = baseR*(0.95+hash(seed+99, 0)*0.3);
+      isoPolyBlob(g, px, py, jr, seed+99.5);
+    }
+  }
+  // island's own rounded-band floor technique (islandCorePath/paintIslandBand),
+  // ported as a standalone copy that takes its context and cell-to-screen
+  // function as params instead of closing over drawIsland's own ctx/cellMid,
+  // so it can paint into either the dark or the lit bake canvas here.
+  function isoFloorBand(g, cellMidFn, cellList, s, growPx, colorStr){
+    g.beginPath();
+    for (const [c,r] of cellList){
+      const [x,y] = cellMidFn(c,r);
+      const h = s*0.51;
+      g.rect(x-h, y-h, h*2, h*2);
+    }
+    g.fillStyle = colorStr; g.fill();
+    g.strokeStyle = colorStr; g.lineWidth = growPx;
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.stroke();
+  }
+  let isoBakeCv = null, isoBakeVer = -1, isoBakeX = 0, isoBakeY = 0, isoBakeCell = 0, isoBakeW = 0, isoBakeH = 0;
+  let isoDarkTmp = null, isoLitTmp = null, isoMaskTmp = null;
+  function isoDrawWallLayer(g, segs, s, pal, ox, oy){
+    const wk = s/42, R = s*0.31, growR = R*1.16;
+    isoBlobPath(g, segs, s, growR, 0.6, 0, 0, ox, oy); g.fillStyle = isoRgbStr(pal.wallRim); g.fill();
+    isoBlobPath(g, segs, s, R, 0.6, 0, 0, ox, oy); g.fillStyle = isoRgbStr(pal.wallBase); g.fill();
+    g.save();
+    isoBlobPath(g, segs, s, R, 0.6, 0, 0, ox, oy); g.clip();
+    for (let n=0;n<segs.length;n+=4){
+      const x1=segs[n],y1=segs[n+1],x2=segs[n+2],y2=segs[n+3];
+      const len = Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/len, uy=(y2-y1)/len;
+      const seed = (x1+ox)*17.3+(y1+oy)*9.1;   // world-space, see isoBlobPath
+      for (let d=0; d<len; d += s*0.3){
+        const hh = hash(seed+d, 0);
+        if (hh < 0.35) continue;
+        const px = x1+ux*d, py = y1+uy*d;
+        g.beginPath();
+        isoPolyBlob(g, px + (hh-0.5)*10, py + (hash(seed+d+5, 0)-0.5)*10, 7+hh*6, seed+d*2.2);
+        g.fillStyle = isoRgbStr(isoShade(pal.wallBase, hh > 0.68 ? 0.16 : -0.16));
+        g.fill();
+      }
+    }
+    g.strokeStyle = isoRgbStr(isoShade(pal.wallRim, -0.1));
+    g.lineWidth = 1.6;
+    for (let n=0;n<segs.length;n+=4){
+      const x1=segs[n],y1=segs[n+1],x2=segs[n+2],y2=segs[n+3];
+      const len = Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/len, uy=(y2-y1)/len, nx=-uy, ny=ux;
+      const seed = (x1+ox)*23.1+(y1+oy)*5.7;   // world-space, see isoBlobPath
+      for (let d=s*0.4; d<len; d += s*0.65){
+        const hh = hash(seed+d, 0);
+        if (hh < 0.5) continue;
+        const px = x1+ux*d, py = y1+uy*d;
+        const aa = 8 + hh*6;
+        g.beginPath();
+        g.moveTo(px + nx*aa, py + ny*aa);
+        g.lineTo(px - nx*aa*0.6 + ux*4, py - ny*aa*0.6 + uy*4);
+        g.stroke();
+      }
+    }
+    g.restore();
+    isoBlobPath(g, segs, s, R*0.58, 0.55, -3*wk, -4*wk, ox, oy); g.fillStyle = isoRgbStr(pal.wallLit); g.fill();
+  }
+  // draws the whole baked scene into `g`, in CSS-unit coordinates anchored at
+  // world position (ox,oy) -- same contract as bakeGarden(g, ox, oy, w, h).
+  // Two full renders of the maze -- a muted "dark cave" and a genuinely
+  // brighter "in your light's reach" version -- composited through a soft
+  // mask built from isoAmbient() (corridor-distance from the player, cosmetic
+  // only). The whole map still renders in both layers regardless of distance
+  // -- fog/visibility is lifted for iso -- this only controls how much of the
+  // brighter layer blends on top.
+  function bakeIsoScene(g, ox, oy, w, h){
+    const s = cellSize;
+    const c0 = Math.max(0, Math.floor(ox/s)), r0 = Math.max(0, Math.floor(oy/s));
+    const c1 = Math.min(cols-1, Math.ceil((ox+w)/s)), r1 = Math.min(rows-1, Math.ceil((oy+h)/s));
+    const cellMidFn = (c,r) => [ (c+0.5)*s - ox, (r+0.5)*s - oy ];
+    const pair = isoPalettePair(T);
+
+    if (!isoDarkTmp){ isoDarkTmp = document.createElement('canvas'); isoLitTmp = document.createElement('canvas'); isoMaskTmp = document.createElement('canvas'); }
+    const pw = Math.max(1, Math.round(w*dpr)), ph = Math.max(1, Math.round(h*dpr));
+    isoDarkTmp.width = pw; isoDarkTmp.height = ph;
+    isoLitTmp.width = pw; isoLitTmp.height = ph;
+    isoMaskTmp.width = pw; isoMaskTmp.height = ph;
+    const dg = isoDarkTmp.getContext('2d'), lg = isoLitTmp.getContext('2d'), mg = isoMaskTmp.getContext('2d');
+    dg.setTransform(dpr,0,0,dpr,0,0); lg.setTransform(dpr,0,0,dpr,0,0); mg.setTransform(dpr,0,0,dpr,0,0);
+
+    dg.fillStyle = isoRgbStr(pair.dark.bg); dg.fillRect(0,0,w,h);
+    lg.fillStyle = isoRgbStr(pair.lit.bg);  lg.fillRect(0,0,w,h);
+
+    // the whole map is always visible now (fog lifted), so every cell in the
+    // bake's rect contributes geometry to both layers.
+    const revealed = [];
+    for (let r=r0; r<=r1; r++) for (let c=c0; c<=c1; c++) revealed.push([c,r]);
+    if (revealed.length){
+      isoFloorBand(dg, cellMidFn, revealed, s, s*1.3, isoRgbStr(pair.dark.floorDeep));
+      isoFloorBand(dg, cellMidFn, revealed, s, s*0.85, isoRgbStr(pair.dark.floorTrod));
+      isoFloorBand(lg, cellMidFn, revealed, s, s*1.3, isoRgbStr(pair.lit.floorDeep));
+      isoFloorBand(lg, cellMidFn, revealed, s, s*0.85, isoRgbStr(pair.lit.floorTrod));
+
+      // wall segments: every closed maze edge, deduped so a wall shared by
+      // two neighbouring cells isn't drawn twice
+      const segMap = new Map();
+      for (const [c,r] of revealed){
+        const i = idx(c,r), wl = cells[i].walls;
+        const x = c*s - ox, y = r*s - oy;
+        const raw = [];
+        if (wl[0]) raw.push(x, y, x+s, y);
+        if (wl[3]) raw.push(x, y, x, y+s);
+        if (wl[1]) raw.push(x+s, y, x+s, y+s);
+        if (wl[2]) raw.push(x, y+s, x+s, y+s);
+        for (let n=0;n<raw.length;n+=4){
+          const x1=raw[n],y1=raw[n+1],x2=raw[n+2],y2=raw[n+3];
+          const a=[Math.round(x1*4),Math.round(y1*4)], b=[Math.round(x2*4),Math.round(y2*4)];
+          const [p,q] = (a[0]<b[0] || (a[0]===b[0] && a[1]<b[1])) ? [a,b] : [b,a];
+          segMap.set(p[0]+','+p[1]+','+q[0]+','+q[1], [x1,y1,x2,y2]);
+        }
+      }
+      const segs = []; segMap.forEach(sv => segs.push(sv[0],sv[1],sv[2],sv[3]));
+      isoDrawWallLayer(dg, segs, s, pair.dark, ox, oy);
+      isoDrawWallLayer(lg, segs, s, pair.lit, ox, oy);
+
+      // the mask: one soft circle per cell, scaled by that cell's own
+      // isoAmbient() -- the same corridor-distance falloff the light meter
+      // already computes, so the lit pool follows the real corridor shape
+      // around the player instead of a plain circle.
+      mg.globalCompositeOperation = 'lighter';
+      for (const [c,r] of revealed){
+        const b = isoAmbient(idx(c,r));
+        if (b <= 0) continue;
+        const [x,y] = cellMidFn(c,r);
+        const R2 = s*1.6;
+        const gg = mg.createRadialGradient(x,y,0, x,y,R2);
+        gg.addColorStop(0,   `rgba(255,255,255,${b})`);
+        gg.addColorStop(0.6, `rgba(255,255,255,${b*0.85})`);
+        gg.addColorStop(1,   'rgba(255,255,255,0)');
+        mg.fillStyle = gg;
+        mg.beginPath(); mg.arc(x,y,R2,0,Math.PI*2); mg.fill();
+      }
+      lg.save();
+      lg.globalCompositeOperation = 'destination-in';
+      lg.setTransform(1,0,0,1,0,0);
+      lg.drawImage(isoMaskTmp, 0, 0);
+      lg.restore();
+    }
+
+    g.drawImage(isoDarkTmp, 0, 0, w, h);
+    g.drawImage(isoLitTmp, 0, 0, w, h);
+  }
+
   function drawIso(t){
     ctx.clearRect(0,0,viewW,viewH);
-    // ambient floor
-    ctx.fillStyle = T.bg;
-    ctx.fillRect(0,0,viewW,viewH);
 
-    const c0 = Math.max(0, Math.floor(camX/cellSize));
-    const r0 = Math.max(0, Math.floor(camY/cellSize));
-    const c1 = Math.min(cols-1, Math.ceil((camX+viewW)/cellSize));
-    const r1 = Math.min(rows-1, Math.ceil((camY+viewH)/cellSize));
-
-    // maze under fog: only explored cells render, brightest where the thread's light reaches
-    const thread = getVar('--thread');
-    const WB = 5, wallBuckets = Array.from({length:WB},()=>[]);   // segments grouped by brightness
-    ctx.imageSmoothingEnabled = false;                          // keep the pixel blocks crisp
-    for (let r=r0; r<=r1; r++){
-      for (let c=c0; c<=c1; c++){
-        const i = idx(c,r);
-        const b = brightnessOf(i);
-        if (b <= 0) continue;                     // unexplored stays dark
-        const x = c*cellSize - camX, y = r*cellSize - camY, s = cellSize;
-        drawFloorBlock(i, b, x, y, s, t);         // chunky pixel block for this cell
-        if (b > DIM){                             // warm lantern light pooled on top
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = 0.05 * b;
-          ctx.fillStyle = thread;
-          ctx.fillRect(x, y, s, s);
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = 1;
-        }
-        const w = cells[i].walls;
-        if (w[0]||w[1]||w[2]||w[3]){
-          const bkt = wallBuckets[Math.min(WB-1, Math.floor(b*WB))];
-          // top/left are always this cell's to declare; right/bottom are the neighbour's
-          // to declare too, so only take them here at the edge of the render window (or
-          // world) where that neighbour won't get a turn — otherwise the same physical
-          // wall gets pushed from both sides and drawn twice.
-          if (w[0]) bkt.push(x,y,x+s,y);
-          if (w[3]) bkt.push(x,y,x,y+s);
-          if (w[1] && (c===c1 || brightnessOf(idx(c+1,r))<=0)) bkt.push(x+s,y,x+s,y+s);
-          if (w[2] && (r===r1 || brightnessOf(idx(c,r+1))<=0)) bkt.push(x,y+s,x+s,y+s);
-        }
+    const needW = viewW + BAKE_M*2, needH = viewH + BAKE_M*2;
+    const isoStale = isoBakeVer !== fogVer || isoBakeCell !== cellSize
+                   || isoBakeW !== needW || isoBakeH !== needH
+                   || camX < isoBakeX || camY < isoBakeY
+                   || camX + viewW > isoBakeX + needW || camY + viewH > isoBakeY + needH;
+    if (isoStale){
+      if (!isoBakeCv || isoBakeW !== needW || isoBakeH !== needH){
+        isoBakeCv = document.createElement('canvas');
+        isoBakeW = needW; isoBakeH = needH;
       }
+      isoBakeCv.width = Math.round(needW*dpr); isoBakeCv.height = Math.round(needH*dpr);
+      isoBakeX = camX - BAKE_M; isoBakeY = camY - BAKE_M;
+      isoBakeVer = fogVer; isoBakeCell = cellSize;
+      const bg = isoBakeCv.getContext('2d');
+      bg.setTransform(dpr,0,0,dpr,0,0);
+      bakeIsoScene(bg, isoBakeX, isoBakeY, needW, needH);
     }
-    ctx.imageSmoothingEnabled = true;
-    ctx.globalAlpha = 1;
-
-    // walls: solid & opaque, drawn in batched passes — all shadows first, then all cores, then a
-    // thin highlight. No transparency and single-stroke-per-batch, so overlaps never show.
-    // Same relief as the hedges: thickness and offsets scale with the cell, with a steep
-    // mostly-vertical throw between the shadow and the lit edge rather than a flat diagonal.
-    const wk = cellSize/42;
-    const thick = Math.max(5, cellSize*0.357);
-    ctx.lineCap = 'square'; ctx.lineJoin = 'miter';   // flat, but extends half a stroke past each end so an L of two walls meets in a solid corner instead of leaving a notch
-    const strokeBuckets = (col, lw, dx, dy, lighten)=>{
-      ctx.save(); if (dx||dy) ctx.translate(dx,dy); ctx.lineWidth = lw;
-      for (let lvl=0; lvl<WB; lvl++){
-        const arr = wallBuckets[lvl]; if (!arr.length) continue;
-        const bb = (lvl+0.5)/WB;
-        ctx.strokeStyle = mixRGB(col, bgRGB, 1-bb);
-        ctx.beginPath();
-        for (let k=0;k<arr.length;k+=4){ ctx.moveTo(arr[k],arr[k+1]); ctx.lineTo(arr[k+2],arr[k+3]); }
-        ctx.stroke();
-      }
-      ctx.restore();
-    };
-    strokeBuckets(WALL_SHADOW, thick*1.2, 1.5*wk, 4.5*wk);            // drop shadow (opaque)
-
-    // solid raised core, replaced with a world-anchored stone-block pattern so the
-    // wall face reads as masonry rather than a flat fill
-    ctx.save();
-    ctx.lineWidth = thick;
-    ctx.strokeStyle = cardAnchor(wallStoneTile(T.wall, cellSize), camX, camY);
-    ctx.beginPath();
-    for (let lvl=0; lvl<WB; lvl++){
-      const arr = wallBuckets[lvl]; if (!arr.length) continue;
-      for (let k=0;k<arr.length;k+=4){ ctx.moveTo(arr[k],arr[k+1]); ctx.lineTo(arr[k+2],arr[k+3]); }
-    }
-    ctx.stroke();
-    ctx.restore();
-    // ...and dimmed toward fog per brightness bucket, same falloff the flat fill used
-    ctx.save(); ctx.lineWidth = thick;
-    for (let lvl=0; lvl<WB; lvl++){
-      const arr = wallBuckets[lvl]; if (!arr.length) continue;
-      const fade = 1 - (lvl+0.5)/WB;
-      if (fade <= 0.02) continue;
-      ctx.strokeStyle = `rgba(${bgRGB.join(',')},${fade.toFixed(3)})`;
-      ctx.beginPath();
-      for (let k=0;k<arr.length;k+=4){ ctx.moveTo(arr[k],arr[k+1]); ctx.lineTo(arr[k+2],arr[k+3]); }
-      ctx.stroke();
-    }
-    ctx.restore();
+    ctx.drawImage(isoBakeCv, Math.round(isoBakeX - camX), Math.round(isoBakeY - camY), isoBakeCv.width/dpr, isoBakeCv.height/dpr);
 
     drawParticles(t);                                         // drifting atmosphere in the lantern light
     const haze = LOOK_FX[curLook].haze;
@@ -3142,9 +3384,12 @@
     // Olli — now at the smoothly-eased tip, under the finger. The lantern glow he
     // carries stays (it's also how the light radius reads), cast from a near-invisible
     // point so it still halos around him without a bright disc showing through.
+    // Fixed gold now instead of the per-look T.coreRGB -- "the light you carry" is
+    // always the same colour in every one of the mine's five looks, same idea as
+    // Olli's own trail bead below being a fixed green everywhere.
     const bx = tipX - camX, by = tipY - camY;
     ctx.save();
-    ctx.shadowColor = `rgba(${T.coreRGB},.9)`; ctx.shadowBlur = cellSize*0.5;
+    ctx.shadowColor = `rgba(${ISO_LIGHT_RGB},.9)`; ctx.shadowBlur = cellSize*0.5;
     ctx.fillStyle = 'rgba(0,0,0,.01)';
     ctx.beginPath(); ctx.arc(bx, by, cellSize*0.04, 0, 7); ctx.fill();
     ctx.restore();
@@ -7294,7 +7539,15 @@
   document.getElementById('next').addEventListener('click', ()=>loadLevel(cur+1 < TOTAL ? cur+1 : cur));
   document.getElementById('tomap').addEventListener('click', openMap);
 
-  let rz; window.addEventListener('resize', ()=>{ clearTimeout(rz); rz=setTimeout(()=>layout(), 120); });
+  let rz; window.addEventListener('resize', ()=>{
+    clearTimeout(rz);
+    rz=setTimeout(()=>{
+      layout();
+      // a previewed (non-current) world's scene is baked at the old size --
+      // repaint it so a mid-preview rotate/resize doesn't leave it stretched
+      if (mapEl.classList.contains('show') && menuWorld !== worldOf(cur)) paintWorldPreview(document.getElementById('wcPreviewBg'), menuWorld);
+    }, 120);
+  });
 
   // go
   // Defensive fix for an iOS "Add to Home Screen" quirk: with no browser chrome to
@@ -7311,6 +7564,7 @@
 
   loadProgress();
   loadSaves();
+  loadLevelRecords();
   loadLevel(Math.min(beaten, TOTAL-1));   // resume at the next unbeaten level
   requestAnimationFrame(frame);
 

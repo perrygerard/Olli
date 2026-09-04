@@ -2518,16 +2518,25 @@
   // started, on the same borrowed transitions.
   (function menuSwipe(){
     let downX = null, downY = null, dragging = false, swallowClick = false, settling = false;
-    let dragDir = 0, dragNextWi = -1, commitPx = 160;
+    let dragDir = 0, dragNextWi = -1, commitPx = 160, lastPointerType = null, suppressMouseUntil = 0;
+    const CARD_GAP = 24;   // breathing room between the two cards while one slides past the other
     const card = () => document.getElementById('wcCard');
     const cardNext = () => document.getElementById('wcCardNext');
     const dots = () => document.getElementById('wcDots');
     const nextCv = () => document.getElementById('wcPreviewBgNext');
     const cardWidth = () => card().getBoundingClientRect().width || (mapEl.getBoundingClientRect().width - 40) || 320;
+    const cardOffset = () => cardWidth() + CARD_GAP;
 
     mapEl.addEventListener('pointerdown', e => {
       if (settling) return;                       // a previous swipe's arrival animation hasn't finished yet
+      // touchscreens can replay a just-finished touch gesture as a synthetic
+      // "mouse" pointer sequence a couple hundred ms later (a standard browser
+      // click-compatibility shim); without this guard that replay reads as a
+      // second, independent swipe and the menu visibly advances twice for one
+      // real gesture. Only mouse events get held back, and only briefly.
+      if (e.pointerType === 'mouse' && Date.now() < suppressMouseUntil) return;
       downX = e.clientX; downY = e.clientY; dragging = false; dragDir = 0; dragNextWi = -1;
+      lastPointerType = e.pointerType;
       const r = mapEl.getBoundingClientRect();
       commitPx = Math.max(90, Math.min(220, (r.width||360) * 0.42));   // a genuine ~40% swipe commits, scaled to screen width
     });
@@ -2560,22 +2569,24 @@
       if (dragNextWi === -1){
         card().style.transform = `translateX(${dx*0.28}px)`;    // rubber-band: no neighbor to hand off to
       } else {
-        // two panels of one filmstrip: both move by the exact same amount, so
-        // wcCardNext (starting a full card-width off to the drag's target side)
+        // two panels of one filmstrip, held CARD_GAP apart instead of touching
+        // edge-to-edge: both move by the exact same amount, so wcCardNext
+        // (starting one card-width-plus-gap off to the drag's target side)
         // closes the gap at exactly the rate wcCard opens one on the other side.
         card().style.transform = `translateX(${dx}px)`;
-        cardNext().style.transform = `translateX(${dragDir*cardWidth() + dx}px)`;
+        cardNext().style.transform = `translateX(${dragDir*cardOffset() + dx}px)`;
       }
     });
     mapEl.addEventListener('pointerup', e => {
       if (downX === null) return;
       const dx = e.clientX - downX; const wasDragging = dragging;
-      const committedWi = dragNextWi, committedDir = dragDir, travel = cardWidth();
+      const committedWi = dragNextWi, committedDir = dragDir, offset = cardOffset();
       downX = null; downY = null; dragging = false;
       if (!wasDragging) return;
       // a real swipe just happened over a row/dot -- eat the click that would
       // otherwise follow this same gesture and open whatever it started on.
       swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
+      if (lastPointerType === 'touch') suppressMouseUntil = Date.now() + 500;   // see the pointerdown guard above
       mapEl.classList.remove('dragging');   // re-enable the settle transition before the final change below
       if (committedWi !== -1 && Math.abs(dx) >= commitPx*0.55){
         // commit: ease both cards the rest of the way across -- wcCard fully off
@@ -2583,7 +2594,7 @@
         // settle finishes, hand off to setMenuWorld() for the real content/state
         // (rows with live click handlers, dots, wcPreviewBg, locked levels, ...).
         settling = true;
-        card().style.transform = `translateX(${committedDir*travel}px)`;
+        card().style.transform = `translateX(${committedDir*offset}px)`;
         cardNext().style.transform = 'translateX(0px)';
         setTimeout(() => {
           setMenuWorld(committedWi);   // resets wcCard/wcCardNext/dots/previews back to neutral
@@ -2592,7 +2603,7 @@
       } else {
         card().style.transform = 'translateX(0)';
         dots().style.transform = 'translateX(-50%)';
-        cardNext().style.transform = `translateX(${(committedWi !== -1 ? committedDir : 1)*travel}px)`;
+        cardNext().style.transform = `translateX(${(committedWi !== -1 ? committedDir : 1)*offset}px)`;
         cardNext().style.opacity = 0;
         nextCv().style.opacity = 0;
       }

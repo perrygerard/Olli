@@ -238,6 +238,11 @@
      finger tracks it exactly -- no easing lag -- then the base transitions above
      take back over the instant the gesture ends (commit or snap-back alike). */
   .sheet.dragging .wcCard, .sheet.dragging .wcDots, .sheet.dragging .wcPreviewBg{transition:none;}
+  /* the neighbor card: held one card-width off to the right at rest (menuSwipe()
+     repositions it to whichever side the drag is actually heading, and slides it
+     in from there) and invisible until a drag actually picks a direction, so it
+     never flashes into view on its own. */
+  .wcCardNext{transform:translateX(100%);opacity:0;pointer-events:none;}
   .wcTitle{margin:0 0 18px;text-align:center;font-size:32px;font-weight:700;
     letter-spacing:.2px;color:var(--wcAccent,#2c7038);}
   .wcRows{display:flex;flex-direction:column;}
@@ -556,6 +561,16 @@
         <div class="wcCard" id="wcCard">
           <h2 class="wcTitle" id="wcTitle">Hedge</h2>
           <div class="wcRows" id="wcRows"></div>
+        </div>
+        <!-- the neighbor world's own card, built with its real rows/title (see
+             menuSwipe()) and held just off-frame at rest -- slides in from that
+             edge in lockstep with wcCard sliding out, so a committed swipe reads
+             as "the next card arriving from outside the frame" rather than the
+             content just appearing in place. Promoted to wcCard's real content
+             once the slide settles (see the pointerup handler's finalize step). -->
+        <div class="wcCard wcCardNext" id="wcCardNext" aria-hidden="true">
+          <h2 class="wcTitle" id="wcTitleNext">Cave</h2>
+          <div class="wcRows" id="wcRowsNext"></div>
         </div>
         <div class="wcDots" id="wcDots"></div>
       </div>
@@ -2411,8 +2426,8 @@
   const MENU_WORLDS = [0, 1, 3];
   let menuWorld = 0;             // which world's card is currently shown/previewed
 
-  function buildWorldRows(wi){
-    const rowsEl = document.getElementById('wcRows');
+  function buildWorldRows(wi, rowsId){
+    const rowsEl = document.getElementById(rowsId || 'wcRows');
     rowsEl.innerHTML = '';
     const w = WORLDS[wi];
     for (let l = 0; l < LEVELS_PER_WORLD; l++){
@@ -2469,12 +2484,18 @@
       paintWorldPreview(bgCv, wi);
       bgCv.style.opacity = 1;
     }
-    // a direct call here (dot tap, row tap, or a committed swipe) fully resolves
-    // whatever menuSwipe() was doing -- put every layer it moves back to neutral
-    // so nothing is left mid-gesture.
+    // a direct call here (dot tap, row tap, or a committed swipe's finalize step)
+    // fully resolves whatever menuSwipe() was doing -- put every layer it moves
+    // back to neutral so nothing is left mid-gesture. wcCardNext is reset with
+    // transitions off (it's either already off-frame or this IS the finalize
+    // step putting it back there) so it never visibly animates on its own here.
     document.getElementById('wcPreviewBgNext').style.opacity = 0;
     document.getElementById('wcCard').style.transform = 'translateX(0)';
     document.getElementById('wcDots').style.transform = 'translateX(-50%)';
+    const cardNextEl = document.getElementById('wcCardNext');
+    cardNextEl.style.transition = 'none';
+    cardNextEl.style.transform = 'translateX(100%)';
+    cardNextEl.style.opacity = 0;
   }
   // swipe left/right anywhere over the menu -- including on the card itself, since
   // the card fills most of the screen and a swipe-only-on-the-sliver-of-background
@@ -2482,23 +2503,30 @@
   // distance threshold below, so it reaches that element's own click handler
   // untouched; only an actual horizontal drag gets treated as a swipe.
   //
-  // While dragging, the card tracks the finger (at a slight lag -- 0.85x -- for a
-  // parallax feel; the dots trail even further behind at 0.4x, a second, slower
-  // layer) and the neighbor world's own real preview (wcPreviewBgNext, painted
-  // once per drag direction rather than every move) fades in underneath in step
-  // with how far you've dragged. .sheet.dragging (CSS) strips every transition
-  // for the duration so this all tracks the finger with zero lag; letting go
-  // either commits (setMenuWorld, which itself resets every layer to neutral)
-  // or eases everything back to where it started, both animated by the same
-  // transitions the drag itself was borrowing from.
+  // While dragging, wcCard and its neighbor wcCardNext move together like two
+  // adjacent panels of a filmstrip: wcCardNext starts held one card-width off to
+  // whichever side you're dragging toward and both slide by the exact same
+  // amount, so a committed swipe reads as that next card arriving from outside
+  // the frame rather than content just appearing in place. The dots trail
+  // further behind at 0.4x, their own slower parallax layer, and the neighbor
+  // world's real maze preview (wcPreviewBgNext, painted once per direction
+  // rather than every move) fades in underneath in step with the drag.
+  // .sheet.dragging (CSS) strips every transition for the duration so all of
+  // this tracks the finger with zero lag; letting go either commits -- easing
+  // both cards the rest of the way across, then finalizing wcCard's real
+  // content once that settle finishes -- or eases everything back to where it
+  // started, on the same borrowed transitions.
   (function menuSwipe(){
-    let downX = null, downY = null, dragging = false, swallowClick = false;
+    let downX = null, downY = null, dragging = false, swallowClick = false, settling = false;
     let dragDir = 0, dragNextWi = -1, commitPx = 160;
     const card = () => document.getElementById('wcCard');
+    const cardNext = () => document.getElementById('wcCardNext');
     const dots = () => document.getElementById('wcDots');
     const nextCv = () => document.getElementById('wcPreviewBgNext');
+    const cardWidth = () => card().getBoundingClientRect().width || (mapEl.getBoundingClientRect().width - 40) || 320;
 
     mapEl.addEventListener('pointerdown', e => {
+      if (settling) return;                       // a previous swipe's arrival animation hasn't finished yet
       downX = e.clientX; downY = e.clientY; dragging = false; dragDir = 0; dragNextWi = -1;
       const r = mapEl.getBoundingClientRect();
       commitPx = Math.max(90, Math.min(220, (r.width||360) * 0.42));   // a genuine ~40% swipe commits, scaled to screen width
@@ -2519,17 +2547,30 @@
       if (hasNext && dir !== dragDir){
         dragDir = dir; dragNextWi = MENU_WORLDS[nextIdx];
         paintWorldPreview(nextCv(), dragNextWi);   // paint once per direction change, not every move
+        document.getElementById('wcTitleNext').textContent = WORLDS[dragNextWi].card;
+        cardNext().style.setProperty('--wcAccent', WORLDS[dragNextWi].accent);
+        buildWorldRows(dragNextWi, 'wcRowsNext');
+        cardNext().style.opacity = 1;
       } else if (!hasNext){
-        dragDir = dir; dragNextWi = -1;            // already at the end of the row -- rubber-band, nothing to preview toward
+        dragDir = dir; dragNextWi = -1;            // already at the end of the row -- rubber-band, nothing to slide in
+        cardNext().style.opacity = 0;
       }
-      const resist = dragNextWi === -1 ? 0.28 : 0.85;   // rubber-band hard against an edge
-      card().style.transform = `translateX(${dx*resist}px)`;
       dots().style.transform = `translateX(calc(-50% + ${dx*0.4}px))`;
       nextCv().style.opacity = dragNextWi === -1 ? 0 : Math.max(0, Math.min(1, Math.abs(dx)/commitPx));
+      if (dragNextWi === -1){
+        card().style.transform = `translateX(${dx*0.28}px)`;    // rubber-band: no neighbor to hand off to
+      } else {
+        // two panels of one filmstrip: both move by the exact same amount, so
+        // wcCardNext (starting a full card-width off to the drag's target side)
+        // closes the gap at exactly the rate wcCard opens one on the other side.
+        card().style.transform = `translateX(${dx}px)`;
+        cardNext().style.transform = `translateX(${dragDir*cardWidth() + dx}px)`;
+      }
     });
     mapEl.addEventListener('pointerup', e => {
       if (downX === null) return;
-      const dx = e.clientX - downX; const wasDragging = dragging; const committedWi = dragNextWi;
+      const dx = e.clientX - downX; const wasDragging = dragging;
+      const committedWi = dragNextWi, committedDir = dragDir, travel = cardWidth();
       downX = null; downY = null; dragging = false;
       if (!wasDragging) return;
       // a real swipe just happened over a row/dot -- eat the click that would
@@ -2537,10 +2578,22 @@
       swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
       mapEl.classList.remove('dragging');   // re-enable the settle transition before the final change below
       if (committedWi !== -1 && Math.abs(dx) >= commitPx*0.55){
-        setMenuWorld(committedWi);
+        // commit: ease both cards the rest of the way across -- wcCard fully off
+        // in the swipe direction, wcCardNext fully into place -- then, once that
+        // settle finishes, hand off to setMenuWorld() for the real content/state
+        // (rows with live click handlers, dots, wcPreviewBg, locked levels, ...).
+        settling = true;
+        card().style.transform = `translateX(${committedDir*travel}px)`;
+        cardNext().style.transform = 'translateX(0px)';
+        setTimeout(() => {
+          setMenuWorld(committedWi);   // resets wcCard/wcCardNext/dots/previews back to neutral
+          settling = false;
+        }, 340);   // just past the .32s CSS settle transition
       } else {
         card().style.transform = 'translateX(0)';
         dots().style.transform = 'translateX(-50%)';
+        cardNext().style.transform = `translateX(${(committedWi !== -1 ? committedDir : 1)*travel}px)`;
+        cardNext().style.opacity = 0;
         nextCv().style.opacity = 0;
       }
     });

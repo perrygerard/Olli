@@ -870,11 +870,12 @@
     tipCell = head; tipT = 0;
     winEl.classList.remove('show');
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = 0; }
-    if (started) elHint.style.opacity = '0';
-    else {
-      elHint.innerHTML = `Gather <b>${emberNeed}</b> treat${emberNeed===1?'':'s'} for Olli`;
-      elHint.style.opacity = '1';
-    }
+    // The initial "Gather N treats for Olli" count-down prompt has been retired --
+    // it was getting stuck showing (most noticeably on hedge, whose levels take a
+    // while to clear since every ember is required there). The hint element now
+    // just stays hidden at level entry; the other showHint() messages (low light,
+    // exit sealed, exit open) still fire normally during play.
+    elHint.style.opacity = '0';
     levelVer++;
     reveal();
     layout();
@@ -1071,8 +1072,8 @@
     fingerActive = null;
     winEl.classList.remove('show');
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = 0; }
-    elHint.innerHTML = `Gather <b>${emberNeed}</b> treat${emberNeed===1?'':'s'} for Olli`;
-    elHint.style.opacity = '1';
+    // See restoreLevel()'s matching comment -- the initial count-down prompt is retired.
+    elHint.style.opacity = '0';
     layout();
     tipX = (cx(startCell)+0.5)*cellSize; tipY = (cy(startCell)+0.5)*cellSize;
     // center camera on start immediately
@@ -2466,36 +2467,79 @@
       dotsEl.appendChild(d);
     });
   }
-  function setMenuWorld(wi){
+  function setMenuWorld(wi, opts){
     if (!WORLDS[wi]) return;
+    const reuseBg = !!(opts && opts.reuseBg);
     menuWorld = wi;
     document.getElementById('wcTitle').textContent = WORLDS[wi].card;
     document.getElementById('wcCard').style.setProperty('--wcAccent', WORLDS[wi].accent);
     buildWorldRows(wi);
     buildWorldDots();
-    // the previewed world's own flavor scene (paintScene/SCENES -- the same
-    // per-world card art the old thumbnail system painted), shown only while
-    // it differs from the world you're actually standing in; the real board
-    // underneath is untouched either way, this just fades in on top of it.
     const bgCv = document.getElementById('wcPreviewBg');
+    const bgNextCv = document.getElementById('wcPreviewBgNext');
     if (wi === worldOf(cur)){
       bgCv.style.opacity = 0;
+    } else if (reuseBg){
+      // this is the tail end of a committed swipe: wcPreviewBgNext already has
+      // the exact maze that's been fading in on screen this whole drag. Copy
+      // those pixels straight across instead of calling paintWorldPreview()
+      // again, which would generate a brand new RANDOM layout -- different
+      // from what the player was just watching -- and visibly swap the
+      // background out from under them the instant the swipe lands.
+      bgCv.width = bgNextCv.width; bgCv.height = bgNextCv.height;
+      bgCv.getContext('2d').drawImage(bgNextCv, 0, 0);
+      bgCv.style.opacity = 1;
     } else {
+      // the previewed world's own flavor scene (paintScene/SCENES -- the same
+      // per-world card art the old thumbnail system painted), shown only
+      // while it differs from the world you're actually standing in; the
+      // real board underneath is untouched either way, this just fades in
+      // on top of it.
       paintWorldPreview(bgCv, wi);
       bgCv.style.opacity = 1;
     }
     // a direct call here (dot tap, row tap, or a committed swipe's finalize step)
     // fully resolves whatever menuSwipe() was doing -- put every layer it moves
-    // back to neutral so nothing is left mid-gesture. wcCardNext is reset with
-    // transitions off (it's either already off-frame or this IS the finalize
-    // step putting it back there) so it never visibly animates on its own here.
-    document.getElementById('wcPreviewBgNext').style.opacity = 0;
-    document.getElementById('wcCard').style.transform = 'translateX(0)';
-    document.getElementById('wcDots').style.transform = 'translateX(-50%)';
+    // back to neutral so nothing is left mid-gesture.
+    const cardEl = document.getElementById('wcCard');
+    const dotsEl = document.getElementById('wcDots');
     const cardNextEl = document.getElementById('wcCardNext');
-    cardNextEl.style.transition = 'none';
-    cardNextEl.style.transform = 'translateX(100%)';
-    cardNextEl.style.opacity = 0;
+    if (reuseBg){
+      // wcCard/wcCardNext/dots/wcPreviewBgNext are all still sitting exactly
+      // where their own arrival animation left them, each with a real,
+      // enabled transition (wcPreviewBgNext's own opacity fade included)
+      // still attached from that. Jumping them back to neutral here needs to
+      // be genuinely instant -- transitions off, then a forced reflow to
+      // actually commit that before turning them back on -- otherwise the
+      // browser animates THIS reset too, on top of content that's already
+      // switched, which reads as the swipe firing a second time (both the
+      // card sliding again and the background visibly fading to what's
+      // underneath it).
+      cardEl.style.transition = 'none';
+      dotsEl.style.transition = 'none';
+      cardNextEl.style.transition = 'none';
+      bgNextCv.style.transition = 'none';
+      cardEl.style.transform = 'translateX(0)';
+      dotsEl.style.transform = 'translateX(-50%)';
+      cardNextEl.style.transform = 'translateX(100%)';
+      cardNextEl.style.opacity = 0;
+      bgNextCv.style.opacity = 0;
+      void cardEl.offsetHeight;   // flush -- commits the instant reset before transitions come back
+      cardEl.style.transition = '';
+      dotsEl.style.transition = '';
+      cardNextEl.style.transition = '';
+      bgNextCv.style.transition = '';
+    } else {
+      // a direct call (dot tap, row tap, initial openMap) -- nothing was
+      // mid-drag, so a plain reset is fine, and wcPreviewBg's own fade
+      // transition is actually a nice touch here rather than something to
+      // suppress.
+      cardEl.style.transform = 'translateX(0)';
+      dotsEl.style.transform = 'translateX(-50%)';
+      cardNextEl.style.transform = 'translateX(100%)';
+      cardNextEl.style.opacity = 0;
+      bgNextCv.style.opacity = 0;
+    }
   }
   // swipe left/right anywhere over the menu -- including on the card itself, since
   // the card fills most of the screen and a swipe-only-on-the-sliver-of-background
@@ -2524,11 +2568,26 @@
     const cardNext = () => document.getElementById('wcCardNext');
     const dots = () => document.getElementById('wcDots');
     const nextCv = () => document.getElementById('wcPreviewBgNext');
+    const curCv = () => document.getElementById('wcPreviewBg');
     const cardWidth = () => card().getBoundingClientRect().width || (mapEl.getBoundingClientRect().width - 40) || 320;
     const cardOffset = () => cardWidth() + CARD_GAP;
 
+    // Shared cleanup for any gesture that ends WITHOUT committing a swipe --
+    // either a short/aborted drag (pointerup below commitPx) or the touch
+    // being taken away from us entirely (pointercancel). Puts every layer
+    // menuSwipe() moves back to its resting position and clears the drag
+    // bookkeeping so the next real pointerdown starts from a clean slate.
+    function abandonDrag(committedWi, committedDir, offset){
+      card().style.transform = 'translateX(0)';
+      dots().style.transform = 'translateX(-50%)';
+      cardNext().style.transform = `translateX(${(committedWi !== -1 ? committedDir : 1)*offset}px)`;
+      cardNext().style.opacity = 0;
+      nextCv().style.opacity = 0;
+      curCv().style.opacity = menuWorld === worldOf(cur) ? 0 : 1;
+    }
     mapEl.addEventListener('pointerdown', e => {
       if (settling) return;                       // a previous swipe's arrival animation hasn't finished yet
+      if (downX !== null) return;                  // a gesture is already in flight -- ignore a second touch point rather than hijacking it
       // touchscreens can replay a just-finished touch gesture as a synthetic
       // "mouse" pointer sequence a couple hundred ms later (a standard browser
       // click-compatibility shim); without this guard that replay reads as a
@@ -2555,7 +2614,14 @@
       const hasNext = nextIdx >= 0 && nextIdx < MENU_WORLDS.length;
       if (hasNext && dir !== dragDir){
         dragDir = dir; dragNextWi = MENU_WORLDS[nextIdx];
-        paintWorldPreview(nextCv(), dragNextWi);   // paint once per direction change, not every move
+        // dragging back toward the world you're actually playing needs no
+        // preview at all -- the real live board already shows through once
+        // wcPreviewBg fades out below. Painting one here anyway used to
+        // fade in the OLD decorative flavor-scene (garden/card) or a freshly
+        // random real-maze preview (cave/island) on top of your real board,
+        // then snap it away again at release -- reading as "an old maze
+        // shows first, then the current one appears".
+        if (dragNextWi !== worldOf(cur)) paintWorldPreview(nextCv(), dragNextWi);
         document.getElementById('wcTitleNext').textContent = WORLDS[dragNextWi].card;
         cardNext().style.setProperty('--wcAccent', WORLDS[dragNextWi].accent);
         buildWorldRows(dragNextWi, 'wcRowsNext');
@@ -2565,7 +2631,17 @@
         cardNext().style.opacity = 0;
       }
       dots().style.transform = `translateX(calc(-50% + ${dx*0.4}px))`;
-      nextCv().style.opacity = dragNextWi === -1 ? 0 : Math.max(0, Math.min(1, Math.abs(dx)/commitPx));
+      const progress = dragNextWi === -1 ? 0 : Math.max(0, Math.min(1, Math.abs(dx)/commitPx));
+      if (dragNextWi !== -1 && dragNextWi === worldOf(cur)){
+        // heading back toward your own real world: fade the CURRENT preview
+        // layer out (revealing the live board underneath) instead of fading
+        // a new one in -- there's nothing to show for your own world.
+        nextCv().style.opacity = 0;
+        curCv().style.opacity = 1 - progress;
+      } else {
+        curCv().style.opacity = 1;   // restore in case a direction reversal had started fading this down
+        nextCv().style.opacity = progress;
+      }
       if (dragNextWi === -1){
         card().style.transform = `translateX(${dx*0.28}px)`;    // rubber-band: no neighbor to hand off to
       } else {
@@ -2585,7 +2661,13 @@
       if (!wasDragging) return;
       // a real swipe just happened over a row/dot -- eat the click that would
       // otherwise follow this same gesture and open whatever it started on.
-      swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
+      // The click listener below clears this itself the moment it actually
+      // swallows one; this timeout is just a safety net so the flag can't
+      // get stuck true forever on a browser that never fires that click at
+      // all (a bare setTimeout(...,0) here previously gave that click zero
+      // margin to arrive, since touch-to-click synthesis isn't guaranteed to
+      // land inside the very next task).
+      swallowClick = true; setTimeout(() => { swallowClick = false; }, 400);
       if (lastPointerType === 'touch') suppressMouseUntil = Date.now() + 500;   // see the pointerdown guard above
       mapEl.classList.remove('dragging');   // re-enable the settle transition before the final change below
       if (committedWi !== -1 && Math.abs(dx) >= commitPx*0.55){
@@ -2593,23 +2675,89 @@
         // in the swipe direction, wcCardNext fully into place -- then, once that
         // settle finishes, hand off to setMenuWorld() for the real content/state
         // (rows with live click handlers, dots, wcPreviewBg, locked levels, ...).
+        //
+        // wcCard's exit target here is -committedDir*offset, NOT
+        // committedDir*offset -- committedDir/dragDir encodes which side
+        // wcCardNext ENTERS from (e.g. -1 means "enters from the left",
+        // matching a rightward swipe), which is the opposite sign from the
+        // direction wcCard itself has been moving all along (it just follows
+        // dx directly during the drag -- translateX(dx) above -- which for a
+        // rightward swipe is positive). Using committedDir*offset here sent
+        // wcCard's settle target to the OPPOSITE side from wherever the live
+        // drag had already been carrying it: mid-drag it was easing further
+        // right the whole time (dx growing positive), then at release it
+        // would suddenly reverse and animate hard back left, all the way
+        // past center and off the far side -- a full-width direction flip in
+        // one step. That's what read as a card reappearing on the same side
+        // just swiped toward: the outgoing card doesn't calmly finish
+        // leaving, it snaps around and sweeps back across the screen before
+        // settling. Flipping the sign here makes wcCard continue straight on
+        // through in the same direction dx was already taking it.
         settling = true;
-        card().style.transform = `translateX(${committedDir*offset}px)`;
+        card().style.transform = `translateX(${-committedDir*offset}px)`;
         cardNext().style.transform = 'translateX(0px)';
-        setTimeout(() => {
-          setMenuWorld(committedWi);   // resets wcCard/wcCardNext/dots/previews back to neutral
+        dots().style.transform = 'translateX(-50%)';   // ease back to center in step with the cards, instead of freezing mid-drag until the handoff below
+        curCv().style.opacity = committedWi === worldOf(cur) ? 0 : 1;   // finish the reveal/restore in step with the cards, rather than trailing behind on its own slower fade after the handoff
+        // the handoff: wcCard is currently resting off-frame with a real,
+        // enabled transition still attached from the arrival step above.
+        // setMenuWorld() itself disables transitions, jumps everything back
+        // to neutral, and forces a reflow before restoring them -- see its
+        // own comment for why that instant-jump handling matters here in
+        // particular (skipping it reads as a second swipe firing on its own).
+        //
+        // This used to fire off a bare setTimeout(...,340) -- just past the
+        // .32s CSS duration -- but that guessed at when the arrival animation
+        // would actually finish PAINTING, not just when its wall-clock
+        // duration had elapsed. Under any real frame drops (a loaded device,
+        // a background tab catching up, low-power throttling) the animation
+        // can still be visibly mid-flight when that timer fires, and the
+        // instant reset then lands mid-motion: cardEl jump-cuts to its new
+        // content while still on screen, or cardNext's slide-in gets cut off
+        // and snapped back off-frame -- which reads exactly like "the
+        // previous or next card appears again after swiping". Listening for
+        // the real transitionend instead ties the handoff to when the
+        // animation has actually finished, on that device, this run -- with
+        // the old timer kept only as a fallback in case transitionend never
+        // fires at all (the gesture gets interrupted again mid-settle, or a
+        // browser quirk drops the event).
+        let handedOff = false;
+        const doHandoff = () => {
+          if (handedOff) return;
+          handedOff = true;
+          card().removeEventListener('transitionend', onSettleEnd);
+          setMenuWorld(committedWi, { reuseBg: true });
           settling = false;
-        }, 340);   // just past the .32s CSS settle transition
+        };
+        const onSettleEnd = ev => {
+          if (ev.target === card() && ev.propertyName === 'transform') doHandoff();
+        };
+        card().addEventListener('transitionend', onSettleEnd);
+        setTimeout(doHandoff, 500);   // safety net well past the .32s transition, in case transitionend never arrives
       } else {
-        card().style.transform = 'translateX(0)';
-        dots().style.transform = 'translateX(-50%)';
-        cardNext().style.transform = `translateX(${(committedWi !== -1 ? committedDir : 1)*offset}px)`;
-        cardNext().style.opacity = 0;
-        nextCv().style.opacity = 0;
+        abandonDrag(committedWi, committedDir, offset);   // ease back to whatever menuWorld itself should show, undoing any reveal-fade the drag had started
       }
     });
+    // A touch can end without ever firing pointerup: the OS can steal it mid-
+    // gesture for its own edge-swipe-back navigation (this menu's swipe zone
+    // now covers the full screen, right where that system gesture lives), or
+    // a browser can cancel it for scroll-vs-swipe disambiguation. Without a
+    // handler here, that leaves .dragging stuck on mapEl (transitions dead
+    // for every layer until the next full swipe happens to clear it) and
+    // wcCardNext frozen wherever the drag left it -- visible, mid-slide,
+    // showing whatever world was being dragged toward -- until something
+    // else happens to overwrite it. That reads exactly like "the previous or
+    // next card appears again after swiping": a stale card left on screen
+    // from a gesture that never got a chance to clean up after itself.
+    mapEl.addEventListener('pointercancel', e => {
+      if (downX === null) return;
+      const wasDragging = dragging;
+      const committedWi = dragNextWi, committedDir = dragDir, offset = cardOffset();
+      downX = null; downY = null; dragging = false;
+      mapEl.classList.remove('dragging');
+      if (wasDragging) abandonDrag(committedWi, committedDir, offset);   // never commits -- the gesture was taken away, not released
+    });
     mapEl.addEventListener('click', e => {
-      if (swallowClick){ e.preventDefault(); e.stopPropagation(); }
+      if (swallowClick){ swallowClick = false; e.preventDefault(); e.stopPropagation(); }
     }, true);
   })();
   function openMap(){

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Thread — hand-drawn style test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{background:#cfc6b0;color:#2c2a26;font-family:"Space Grotesk",system-ui,sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100dvh;overflow:hidden;}
+  .device{position:relative;width:min(420px,100%);height:min(860px,100dvh);background:#efe7d6;
+    overflow:hidden;display:flex;flex-direction:column;}
+  @media (min-width:441px){ .device{border-radius:40px;box-shadow:0 0 0 2px #b7ac92,0 0 0 12px #2c2a26,0 40px 90px -30px #000;} }
+  .bar{display:flex;align-items:center;gap:10px;padding:16px 18px 8px;padding-top:max(16px,env(safe-area-inset-top));z-index:3;}
+  .mark{font-family:"Gochi Hand",cursive;font-weight:400;font-size:26px;color:#2c2a26;line-height:.9;}
+  .mark small{display:block;font-family:"Space Grotesk";font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:#8a8069;margin-top:1px;}
+  .spacer{flex:1;}
+  .btn{border:1.5px solid #2c2a26;background:transparent;color:#2c2a26;font-family:"Gochi Hand",cursive;
+    font-size:17px;padding:5px 15px;border-radius:12px;cursor:pointer;}
+  .stage{position:relative;flex:1;min-height:0;touch-action:none;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+  .hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);white-space:nowrap;
+    font-family:"Gochi Hand",cursive;font-size:19px;color:#4a463d;transition:opacity .5s;}
+  .hint b{color:#c0472f;}
+  .note{position:absolute;left:16px;top:14px;font-family:"Gochi Hand",cursive;font-size:15px;color:#9a8f77;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="bar">
+      <div class="mark">Thread<small>hand-drawn test</small></div>
+      <div class="spacer"></div>
+      <button class="btn" id="reset">new maze</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="c"></canvas>
+      <div class="note">style preview</div>
+      <div class="hint" id="hint">drag or tap to trace the <b>thread</b></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const elHint = document.getElementById('hint');
+
+  // ---- palette: ink on warm paper ----
+  const PAPER='#efe7d6', INK='44,42,38',
+        WALL_TOP='#e7e2d4', WALL_SIDE='#cfc9ba', WALL_SIDE2='#bcb6a6',
+        THREAD='192,71,47', GOAL_FILL='#e3ddcd';
+
+  // ---- iso projection (gentler tilt: flatter angle, shorter walls) ----
+  let ISO_W=30, ISO_H=18, WALL_H=17, WT=0.18;
+  let OX=0, OY=0, camX=0, camY=0, tCamX=0, tCamY=0, viewW=0, viewH=0, dpr=1;
+  const proj=(gx,gy,h)=>({ x:OX+(gx-gy)*ISO_W-camX, y:OY+(gx+gy)*ISO_H-h-camY });
+  function cellAtScreen(px,py){
+    const X=(px+camX-OX)/ISO_W, Y=(py+camY-OY)/ISO_H;
+    let c=Math.floor((X+Y)/2), r=Math.floor((Y-X)/2);
+    c=Math.max(0,Math.min(cols-1,c));r=Math.max(0,Math.min(rows-1,r));return idx(c,r);
+  }
+
+  // ---- maze ----
+  let cols=13, rows=13, cells;
+  let trail=[], inTrail=new Set(), startCell=0, endCell=0;
+  let explored=new Set(), nearDepth=new Map();
+  const REACH=3.4;
+  const idx=(c,r)=>r*cols+c, cx=i=>i%cols, cy=i=>(i-i%cols)/cols;
+  const dist=(a,b)=>Math.abs(cx(a)-cx(b))+Math.abs(cy(a)-cy(b));
+
+  function genMaze(braid){
+    cells=Array.from({length:cols*rows},()=>({walls:[true,true,true,true],v:false}));
+    const st=[];let cur=0;cells[0].v=true;let n=1;
+    const dirs=[[0,-1,0,2],[1,0,1,3],[0,1,2,0],[-1,0,3,1]];
+    while(n<cols*rows){const c=cx(cur),r=cy(cur),nb=[];
+      for(const[dc,dr,w,ow]of dirs){const nc=c+dc,nr=r+dr;
+        if(nc>=0&&nc<cols&&nr>=0&&nr<rows&&!cells[idx(nc,nr)].v)nb.push([idx(nc,nr),w,ow]);}
+      if(nb.length){const[ni,w,ow]=nb[(Math.random()*nb.length)|0];
+        cells[cur].walls[w]=false;cells[ni].walls[ow]=false;st.push(cur);cur=ni;cells[cur].v=true;n++;}
+      else cur=st.pop();}
+    if(braid>0){const cl=[];
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const i=idx(c,r);
+        if(c<cols-1&&cells[i].walls[1])cl.push([i,idx(c+1,r),1,3]);
+        if(r<rows-1&&cells[i].walls[2])cl.push([i,idx(c,r+1),2,0]);}
+      for(let k=cl.length-1;k>0;k--){const j=(Math.random()*(k+1))|0;[cl[k],cl[j]]=[cl[j],cl[k]];}
+      const oc=Math.floor(cl.length*braid);
+      for(let k=0;k<oc;k++){const[a,b,w,ow]=cl[k];cells[a].walls[w]=false;cells[b].walls[ow]=false;}}
+  }
+  function openN(i){const c=cx(i),r=cy(i),o=[];
+    if(!cells[i].walls[0])o.push(idx(c,r-1));if(!cells[i].walls[1])o.push(idx(c+1,r));
+    if(!cells[i].walls[2])o.push(idx(c,r+1));if(!cells[i].walls[3])o.push(idx(c-1,r));return o;}
+  function pickExit(){
+    const d=new Int32Array(cols*rows).fill(-1);d[0]=0;const q=[0];let mx=0;
+    for(let qi=0;qi<q.length;qi++){const i=q[qi];for(const nb of openN(i)){if(d[nb]<0){d[nb]=d[i]+1;if(d[nb]>mx)mx=d[nb];q.push(nb);}}}
+    const far=[];for(let i=0;i<cols*rows;i++)if(i&&d[i]>=mx*0.7)far.push(i);
+    return far.length?far[(Math.random()*far.length)|0]:cols*rows-1;
+  }
+  function reveal(){
+    nearDepth=new Map();const head=trail[trail.length-1];const q=[head];nearDepth.set(head,0);explored.add(head);
+    const md=Math.ceil(REACH);
+    for(let qi=0;qi<q.length;qi++){const i=q[qi],d=nearDepth.get(i);if(d>=md)continue;
+      for(const nb of openN(i)){if(!nearDepth.has(nb)){nearDepth.set(nb,d+1);explored.add(nb);q.push(nb);}}}
+  }
+  function bright(i){
+    if(nearDepth.has(i)){let b=1-nearDepth.get(i)/REACH;b=b<=0?0:(b>=1?1:b*b*(3-2*b));return Math.max(b,explored.has(i)?0.22:0);}
+    return explored.has(i)?0.22:0;
+  }
+
+  // ---- movement ----
+  let dragging=false, moved=false, downX=0, downY=0, walkQueue=[], walkAcc=0, lastT=0;
+  const STEP_MS=54, DRAG_THRESH=10;
+  function applyStep(next){
+    const prev=trail.length>1?trail[trail.length-2]:-1;
+    if(next===prev){inTrail.delete(trail.pop());}else{trail.push(next);inTrail.add(next);}
+    reveal(); if(elHint.style.opacity!=='0')elHint.style.opacity='0';
+  }
+  function stepToward(target){let g=0;
+    while(g++<24){const head=trail[trail.length-1];if(head===target)break;
+      const prev=trail.length>1?trail[trail.length-2]:-1;let best=-1,bd=dist(head,target);
+      for(const nb of openN(head)){const d=dist(nb,target);if(d>=bd)continue;if(nb===prev||!inTrail.has(nb)){best=nb;bd=d;}}
+      if(best===-1)break;applyStep(best);}}
+  function bfsPath(from,to){
+    if(from===to||!explored.has(to))return null;
+    if(inTrail.has(to)){const k=trail.indexOf(to);return k<0?null:trail.slice(k,trail.length-1).reverse();}
+    const pm=new Map([[from,-1]]);const q=[from];
+    for(let qi=0;qi<q.length;qi++){const i=q[qi];if(i===to)break;
+      for(const nb of openN(i)){if(!explored.has(nb)||pm.has(nb))continue;if(inTrail.has(nb)&&nb!==to)continue;pm.set(nb,i);q.push(nb);}}
+    if(!pm.has(to))return null;const p=[];let cu=to;while(cu!==from){p.push(cu);cu=pm.get(cu);}return p.reverse();
+  }
+  function onDown(e){dragging=true;moved=false;downX=e.clientX;downY=e.clientY;walkQueue.length=0;}
+  function onMove(e){if(!dragging)return;
+    if(!moved&&Math.hypot(e.clientX-downX,e.clientY-downY)<DRAG_THRESH)return;
+    moved=true;e.preventDefault();const r=canvas.getBoundingClientRect();
+    stepToward(cellAtScreen(e.clientX-r.left,e.clientY-r.top-WALL_H*0.6));}
+  function onUp(e){dragging=false;if(moved)return;const r=canvas.getBoundingClientRect();
+    const path=bfsPath(trail[trail.length-1],cellAtScreen(e.clientX-r.left,e.clientY-r.top));
+    if(path&&path.length){walkQueue=path;walkAcc=0;}}
+  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);onDown(e);});
+  canvas.addEventListener('pointermove',onMove,{passive:false});
+  canvas.addEventListener('pointerup',onUp);
+  canvas.addEventListener('pointercancel',()=>{dragging=false;});
+
+  // ---- layout / camera ----
+  function layout(){
+    const r=stage.getBoundingClientRect();
+    dpr=Math.min(window.devicePixelRatio||1,2.5);
+    canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);viewW=r.width;viewH=r.height;
+    ISO_W=Math.max(24,Math.min(36,viewW/9));ISO_H=ISO_W*0.6;WALL_H=ISO_W*0.55;   // gentler tilt, shorter walls
+    OX=viewW/2;OY=viewH*0.40;
+  }
+  const worldScreen=(gx,gy)=>({x:OX+(gx-gy)*ISO_W,y:OY+(gx+gy)*ISO_H});
+  function updateCamera(){
+    const head=trail[trail.length-1];const w=worldScreen(cx(head)+0.5,cy(head)+0.5);
+    if(walkQueue.length>0){tCamX=w.x-viewW/2;tCamY=w.y-viewH/2;}
+    else{const dzX=viewW*0.26,dzY=viewH*0.24;
+      if(w.x<tCamX+dzX)tCamX=w.x-dzX;if(w.x>tCamX+viewW-dzX)tCamX=w.x-viewW+dzX;
+      if(w.y<tCamY+dzY)tCamY=w.y-dzY;if(w.y>tCamY+viewH-dzY)tCamY=w.y-viewH+dzY;}
+    camX+=(tCamX-camX)*0.16;camY+=(tCamY-camY)*0.16;
+  }
+
+  // ---- hand-drawn primitives ----
+  const jit=s=>{const x=Math.sin(s*12.9898)*43758.5453;return (x-Math.floor(x))*2-1;};
+  function ink(p0,p1,seed,alpha,w){                    // one wobbly ink stroke
+    const mx=(p0.x+p1.x)/2,my=(p0.y+p1.y)/2;
+    const nx=-(p1.y-p0.y),ny=(p1.x-p0.x),nl=Math.hypot(nx,ny)||1,off=jit(seed)*1.5;
+    ctx.strokeStyle=`rgba(${INK},${alpha})`;ctx.lineWidth=w||1.5;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(p0.x,p0.y);
+    ctx.quadraticCurveTo(mx+nx/nl*off,my+ny/nl*off,p1.x,p1.y);ctx.stroke();
+  }
+  const quadPath=(a,b,c,d)=>{ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();};
+
+  function drawWall(ax,ay,bx,by,b){
+    const perp=(ay===by)?[0,WT]:[WT,0];
+    const fA={gx:ax+perp[0]/2,gy:ay+perp[1]/2},fB={gx:bx+perp[0]/2,gy:by+perp[1]/2};
+    const kA={gx:ax-perp[0]/2,gy:ay-perp[1]/2},kB={gx:bx-perp[0]/2,gy:by-perp[1]/2};
+    const fAt=proj(fA.gx,fA.gy,WALL_H),fBt=proj(fB.gx,fB.gy,WALL_H);
+    const kAt=proj(kA.gx,kA.gy,WALL_H),kBt=proj(kB.gx,kB.gy,WALL_H);
+    const fAb=proj(fA.gx,fA.gy,0),fBb=proj(fB.gx,fB.gy,0);
+    const fa=0.35+0.6*b, ia=0.18+0.82*b;
+    // face fills (flat, so the paper shows through faintly at distance)
+    ctx.globalAlpha=fa;ctx.fillStyle=(ay===by)?WALL_SIDE:WALL_SIDE2;quadPath(fAt,fBt,fBb,fAb);ctx.fill();
+    ctx.fillStyle=WALL_TOP;quadPath(kAt,kBt,fBt,fAt);ctx.fill();
+    ctx.globalAlpha=1;
+    // wobbly ink outline
+    const s=(ax*7+ay*13+bx*17+by*23)|0;
+    ink(fAb,fBb,s,ia);       // front base
+    ink(fAb,fAt,s+1,ia);     // left post
+    ink(fBb,fBt,s+2,ia);     // right post
+    ink(fAt,fBt,s+3,ia);     // top front ridge
+    ink(kAt,fAt,s+4,ia*0.85);// top left
+    ink(kBt,fBt,s+5,ia*0.85);// top right
+    ink(kAt,kBt,s+6,ia*0.85);// top back
+  }
+
+  function drawFloorTint(i,b){                          // faint warm pool near the lantern
+    if(b<=0.24)return;
+    const c=cx(i),r=cy(i);
+    const p0=proj(c,r,0),p1=proj(c+1,r,0),p2=proj(c+1,r+1,0),p3=proj(c,r+1,0);
+    ctx.globalAlpha=0.10*(b-0.24);ctx.fillStyle='#e8b98a';
+    quadPath(p0,p1,p2,p3);ctx.fill();ctx.globalAlpha=1;
+  }
+
+  const threadPt=i=>proj(cx(i)+0.5,cy(i)+0.5,3);
+  function drawThreadSeg(a,b){
+    const pa=threadPt(a),pb=threadPt(b);
+    const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2;
+    const nx=-(pb.y-pa.y),ny=(pb.x-pa.x),nl=Math.hypot(nx,ny)||1,off=jit(a*31+b*7)*1.6;
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle=`rgba(${192},${71},${47},0.9)`;ctx.lineWidth=ISO_W*0.14;
+    ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.quadraticCurveTo(mx+nx/nl*off,my+ny/nl*off,pb.x,pb.y);ctx.stroke();
+  }
+  function drawFigure(i){
+    const p=threadPt(i),u=ISO_W;
+    ctx.fillStyle=`rgb(${INK})`;
+    ctx.beginPath();ctx.arc(p.x,p.y-u*0.46,u*0.10,0,7);ctx.fill();      // head
+    ctx.beginPath();                                                    // body
+    ctx.moveTo(p.x-u*0.09,p.y-u*0.32);
+    ctx.quadraticCurveTo(p.x-u*0.13,p.y-u*0.02,p.x-u*0.05,p.y);
+    ctx.lineTo(p.x+u*0.05,p.y);
+    ctx.quadraticCurveTo(p.x+u*0.13,p.y-u*0.02,p.x+u*0.09,p.y-u*0.32);
+    ctx.closePath();ctx.fill();
+  }
+  function drawGoal(i,b){                                                // a little drawn house
+    const p=proj(cx(i)+0.5,cy(i)+0.5,0),s=ISO_W*0.5,a=0.4+0.6*b,y=p.y-s*0.2;
+    ctx.globalAlpha=a;
+    ctx.fillStyle=GOAL_FILL;ctx.fillRect(p.x-s*0.42,y-s*0.7,s*0.84,s*0.7);
+    ctx.beginPath();ctx.moveTo(p.x-s*0.54,y-s*0.66);ctx.lineTo(p.x,y-s*1.18);ctx.lineTo(p.x+s*0.54,y-s*0.66);ctx.closePath();
+    ctx.fillStyle='#d8cfba';ctx.fill();
+    ctx.globalAlpha=1;
+    const seed=(i*13)|0;
+    ink({x:p.x-s*0.42,y:y},{x:p.x+s*0.42,y:y},seed,a);
+    ink({x:p.x-s*0.42,y:y},{x:p.x-s*0.42,y:y-s*0.7},seed+1,a);
+    ink({x:p.x+s*0.42,y:y},{x:p.x+s*0.42,y:y-s*0.7},seed+2,a);
+    ink({x:p.x-s*0.54,y:y-s*0.66},{x:p.x,y:y-s*1.18},seed+3,a);
+    ink({x:p.x,y:y-s*1.18},{x:p.x+s*0.54,y:y-s*0.66},seed+4,a);
+    ink({x:p.x-s*0.12,y:y},{x:p.x-s*0.12,y:y-s*0.34},seed+5,a);         // door
+    ink({x:p.x+s*0.12,y:y},{x:p.x+s*0.12,y:y-s*0.34},seed+6,a);
+    ink({x:p.x-s*0.12,y:y-s*0.34},{x:p.x+s*0.12,y:y-s*0.34},seed+7,a);
+  }
+
+  function draw(){
+    ctx.fillStyle=PAPER;ctx.fillRect(0,0,viewW,viewH);
+
+    const segByCell=new Map();
+    for(let k=1;k<trail.length;k++){const a=trail[k-1],b=trail[k];
+      const owner=(cx(a)+cy(a))>=(cx(b)+cy(b))?a:b;
+      (segByCell.get(owner)||segByCell.set(owner,[]).get(owner)).push([a,b]);}
+
+    const order=[];
+    for(let i=0;i<cols*rows;i++){if(bright(i)>0)order.push(i);}
+    order.sort((p,q)=>(cx(p)+cy(p))-(cx(q)+cy(q)));
+
+    for(const i of order){
+      const b=bright(i),c=cx(i),r=cy(i);
+      drawFloorTint(i,b);
+      if(cells[i].walls[0])drawWall(c,r,c+1,r,b);      // N
+      if(cells[i].walls[3])drawWall(c,r,c,r+1,b);      // W
+      if(i===endCell)drawGoal(i,b);
+      const segs=segByCell.get(i);
+      if(segs)for(const[a,bb]of segs)drawThreadSeg(a,bb);
+      if(cells[i].walls[1])drawWall(c+1,r,c+1,r+1,b);  // E
+      if(cells[i].walls[2])drawWall(c,r+1,c+1,r+1,b);  // S
+      if(i===trail[trail.length-1])drawFigure(i);
+    }
+    // soft paper edge
+    const vg=ctx.createRadialGradient(viewW/2,viewH*0.44,viewH*0.3,viewW/2,viewH*0.44,viewH*0.8);
+    vg.addColorStop(0,'rgba(207,198,176,0)');vg.addColorStop(1,'rgba(180,170,146,0.5)');
+    ctx.fillStyle=vg;ctx.fillRect(0,0,viewW,viewH);
+  }
+
+  function frame(t){
+    const dt=lastT?t-lastT:0;lastT=t;
+    if(walkQueue.length){walkAcc+=dt;while(walkAcc>=STEP_MS&&walkQueue.length){walkAcc-=STEP_MS;applyStep(walkQueue.shift());}}
+    updateCamera();draw();requestAnimationFrame(frame);
+  }
+  function reset(){
+    genMaze(0.06);startCell=0;endCell=pickExit();
+    trail=[startCell];inTrail=new Set(trail);explored=new Set();nearDepth=new Map();reveal();
+    elHint.style.opacity='1';layout();
+    const w=worldScreen(cx(startCell)+0.5,cy(startCell)+0.5);
+    tCamX=camX=w.x-viewW/2;tCamY=camY=w.y-viewH/2;
+  }
+  document.getElementById('reset').addEventListener('click',reset);
+  let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(layout,120);});
+  reset();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

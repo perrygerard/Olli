@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Thread — a maze concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#0a1114;
+    --app:#10191d;
+    --app-2:#0c1417;
+    --ink:#e8eef0;
+    --muted:#7f96a0;
+    --wall:#33474f;
+    --thread:#ffc06a;
+    --thread-core:#fff0d2;
+    --beacon:#56e0c8;
+    --line:#1c2a30;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #12211f 0%, var(--page) 60%);
+    color:var(--ink);
+    font-family:"Space Grotesk",system-ui,sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100dvh;padding:24px;overflow:hidden;
+  }
+
+  /* Phone frame on wide screens; fills the viewport on real phones */
+  .device{
+    position:relative;width:min(400px,100%);height:min(844px,100dvh);
+    background:var(--app);border-radius:44px;overflow:hidden;
+    box-shadow:0 0 0 2px #1e2c31, 0 0 0 12px #060b0d, 0 40px 90px -30px #000;
+    display:flex;flex-direction:column;
+  }
+  @media (max-width:440px){
+    body{padding:0;}
+    .device{width:100%;height:100dvh;border-radius:0;box-shadow:none;}
+  }
+
+  .topbar{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 18px 10px;padding-top:max(14px,env(safe-area-inset-top));
+    z-index:5;
+  }
+  .mark{font-family:"Fraunces",serif;font-weight:600;font-size:20px;letter-spacing:.2px;}
+  .mark small{font-family:"Space Grotesk";font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-top:-2px;}
+  .spacer{flex:1;}
+  .chips{display:flex;gap:4px;background:var(--app-2);padding:3px;border-radius:999px;border:1px solid var(--line);}
+  .chip{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:500;
+    padding:5px 11px;border-radius:999px;cursor:pointer;transition:.18s;}
+  .chip[aria-pressed="true"]{background:var(--thread);color:#241704;}
+  .iconbtn{border:1px solid var(--line);background:var(--app-2);color:var(--muted);
+    width:34px;height:34px;border-radius:10px;cursor:pointer;display:grid;place-items:center;transition:.18s;}
+  .iconbtn:hover{color:var(--ink);border-color:#2b3e45;}
+  .iconbtn svg{width:16px;height:16px;}
+
+  .stage{position:relative;flex:1;min-height:0;touch-action:none;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+
+  /* HUD */
+  .hud{position:absolute;left:16px;top:14px;display:flex;gap:14px;pointer-events:none;
+    font-variant-numeric:tabular-nums;}
+  .stat{background:rgba(10,17,20,.55);backdrop-filter:blur(6px);border:1px solid var(--line);
+    border-radius:12px;padding:7px 11px;min-width:64px;}
+  .stat .k{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+  .stat .v{font-size:17px;font-weight:500;margin-top:1px;}
+
+  .hint{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+    background:rgba(10,17,20,.62);backdrop-filter:blur(6px);border:1px solid var(--line);
+    color:var(--ink);font-size:13px;padding:9px 15px;border-radius:999px;
+    pointer-events:none;transition:opacity .5s;white-space:nowrap;}
+  .hint b{color:var(--thread);font-weight:500;}
+
+  /* Win */
+  .win{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;background:radial-gradient(90% 60% at 50% 42%, rgba(21,42,40,.86), rgba(8,14,16,.94));
+    backdrop-filter:blur(3px);z-index:8;text-align:center;padding:24px;}
+  .win.show{display:flex;animation:fade .5s ease both;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .win h2{font-family:"Fraunces",serif;font-weight:600;font-size:30px;margin:0;}
+  .win p{color:var(--muted);margin:2px 0 18px;font-size:14px;}
+  .win .figures{display:flex;gap:26px;margin-bottom:22px;}
+  .win .figures div{font-family:"Fraunces",serif;font-size:26px;}
+  .win .figures span{display:block;font-family:"Space Grotesk";font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-top:2px;}
+  .btn{border:0;background:var(--thread);color:#241704;font:inherit;font-weight:600;font-size:15px;
+    padding:12px 22px;border-radius:14px;cursor:pointer;}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid #2b3e45;}
+  .win .row{display:flex;gap:10px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="topbar">
+      <div class="mark">Thread<small>find the way out</small></div>
+      <div class="spacer"></div>
+      <div class="chips" role="group" aria-label="Maze size">
+        <button class="chip" data-size="S">S</button>
+        <button class="chip" data-size="M" aria-pressed="true">M</button>
+        <button class="chip" data-size="L">L</button>
+      </div>
+      <button class="iconbtn" id="reset" title="New maze" aria-label="New maze">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      </button>
+    </div>
+
+    <div class="stage" id="stage">
+      <canvas id="c"></canvas>
+      <div class="hud">
+        <div class="stat"><div class="k">Time</div><div class="v" id="time">0:00</div></div>
+        <div class="stat"><div class="k">Steps</div><div class="v" id="steps">0</div></div>
+      </div>
+      <div class="hint" id="hint">Drag from the <b>ring</b> to the <b>beacon</b></div>
+      <div class="win" id="win">
+        <h2>Out.</h2>
+        <p id="wintag">You found the way through.</p>
+        <div class="figures">
+          <div id="wtime">0:00<span>time</span></div>
+          <div id="wsteps">0<span>steps</span></div>
+        </div>
+        <div class="row">
+          <button class="btn" id="again">New maze</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const elTime = document.getElementById('time');
+  const elSteps = document.getElementById('steps');
+  const elHint = document.getElementById('hint');
+  const winEl = document.getElementById('win');
+
+  const SIZES = { S:[12,16], M:[18,26], L:[26,40] };
+  let sizeKey = 'M';
+
+  // ---- state ----
+  let cols, rows, cells, cellSize;
+  let camX = 0, camY = 0, tCamX = 0, tCamY = 0;
+  let viewW = 0, viewH = 0, dpr = 1;
+  let trail = [];              // array of cell indices
+  let inTrail = new Set();     // membership for O(1)
+  let endCell = 0, startCell = 0;
+  let dragging = false;
+  let started = false, won = false;
+  let startTime = 0, elapsed = 0;
+  let fingerActive = null;     // {x,y} world coords of the active point (for the ghost ring)
+
+  const idx = (c, r) => r * cols + c;
+  const cx = i => i % cols;
+  const cy = i => (i - (i % cols)) / cols;
+
+  // ---- maze generation (recursive backtracker) ----
+  function genMaze() {
+    cells = Array.from({length: cols*rows}, () => ({ walls:[true,true,true,true], v:false }));
+    const stack = [];
+    let cur = idx(0,0); cells[cur].v = true;
+    const dirs = [[0,-1,0,2],[1,0,1,3],[0,1,2,0],[-1,0,3,1]]; // dc,dr,wall,opposite
+    let count = 1;
+    while (count < cols*rows) {
+      const c = cx(cur), r = cy(cur);
+      const nbrs = [];
+      for (const [dc,dr,w,ow] of dirs) {
+        const nc=c+dc, nr=r+dr;
+        if (nc>=0&&nc<cols&&nr>=0&&nr<rows && !cells[idx(nc,nr)].v) nbrs.push([idx(nc,nr),w,ow]);
+      }
+      if (nbrs.length) {
+        const [ni,w,ow] = nbrs[(Math.random()*nbrs.length)|0];
+        cells[cur].walls[w] = false; cells[ni].walls[ow] = false;
+        stack.push(cur); cur = ni; cells[cur].v = true; count++;
+      } else cur = stack.pop();
+    }
+  }
+
+  function resetGame(newMaze=true) {
+    [cols, rows] = SIZES[sizeKey];
+    if (newMaze) genMaze();
+    startCell = idx(0,0);
+    endCell = idx(cols-1, rows-1);
+    trail = [startCell];
+    inTrail = new Set(trail);
+    started = false; won = false; elapsed = 0; startTime = 0;
+    fingerActive = null;
+    winEl.classList.remove('show');
+    elHint.style.opacity = '1';
+    layout();
+    // center camera on start immediately
+    tCamX = camX = clampCam(cellSize*(cx(startCell)+0.5) - viewW/2, worldW()-viewW);
+    tCamY = camY = clampCam(cellSize*(cy(startCell)+0.5) - viewH/2, worldH()-viewH);
+    updateHud();
+  }
+
+  const worldW = () => cols*cellSize;
+  const worldH = () => rows*cellSize;
+  const clampCam = (v, max) => max <= 0 ? max/2 : Math.max(0, Math.min(max, v));
+
+  // ---- layout / sizing ----
+  function layout() {
+    const r = stage.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    viewW = r.width; viewH = r.height;
+    // show ~7 cells across, clamped to a comfortable finger size
+    cellSize = Math.max(38, Math.min(66, Math.round(viewW / 7)));
+    tCamX = camX = clampCam(camX, worldW()-viewW);
+    tCamY = camY = clampCam(camY, worldH()-viewH);
+  }
+
+  // ---- input ----
+  const FINGER_LIFT = 1.15; // active point sits ~1.15 cells above the fingertip so it isn't hidden
+
+  function pointToCell(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    const px = clientX - r.left;
+    const py = clientY - r.top - FINGER_LIFT*cellSize; // lift the active point above the finger
+    const wx = px + camX, wy = py + camY;
+    fingerActive = { x: wx, y: wy };
+    let c = Math.floor(wx / cellSize), rr = Math.floor(wy / cellSize);
+    c = Math.max(0, Math.min(cols-1, c));
+    rr = Math.max(0, Math.min(rows-1, rr));
+    return idx(c, rr);
+  }
+
+  function openNeighbors(i) {
+    const c = cx(i), r = cy(i), out = [];
+    if (!cells[i].walls[0]) out.push(idx(c, r-1)); // N
+    if (!cells[i].walls[1]) out.push(idx(c+1, r)); // E
+    if (!cells[i].walls[2]) out.push(idx(c, r+1)); // S
+    if (!cells[i].walls[3]) out.push(idx(c-1, r)); // W
+    return out;
+  }
+  const dist = (a, b) => Math.abs(cx(a)-cx(b)) + Math.abs(cy(a)-cy(b));
+
+  // Move the trail head toward the finger cell, one valid corridor-step at a time.
+  // Because the finger is physically on the corridor being traced, "step toward finger"
+  // reliably follows the path — no global pathfinding needed.
+  function stepToward(target) {
+    let guard = 0;
+    while (guard++ < 24) {
+      const head = trail[trail.length-1];
+      if (head === target) break;
+      const prev = trail.length > 1 ? trail[trail.length-2] : -1;
+      const nbrs = openNeighbors(head);
+      let best = -1, bestD = dist(head, target);
+      for (const n of nbrs) {
+        const d = dist(n, target);
+        if (d >= bestD) continue;                 // must make progress toward the finger
+        if (n === prev || !inTrail.has(n)) {      // retrace previous, or explore new
+          if (d < bestD) { best = n; bestD = d; }
+        }
+      }
+      if (best === -1) break;
+      if (best === prev) {                         // retract
+        const popped = trail.pop();
+        inTrail.delete(popped);
+      } else {                                     // advance
+        trail.push(best);
+        inTrail.add(best);
+      }
+      if (!started) { started = true; startTime = performance.now(); elHint.style.opacity = '0'; }
+      if (best === endCell || trail[trail.length-1] === endCell) { doWin(); break; }
+    }
+  }
+
+  function onDown(e){ if (won) return; dragging = true; stepToward(pointToCell(e.clientX, e.clientY)); }
+  function onMove(e){ if (!dragging || won) return; e.preventDefault(); stepToward(pointToCell(e.clientX, e.clientY)); }
+  function onUp(){ dragging = false; fingerActive = null; }
+
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); onDown(e); });
+  canvas.addEventListener('pointermove', onMove, {passive:false});
+  canvas.addEventListener('pointerup', onUp);
+  canvas.addEventListener('pointercancel', onUp);
+
+  function doWin(){
+    if (won) return;
+    won = true; dragging = false; fingerActive = null;
+    elapsed = started ? (performance.now() - startTime) : 0;
+    document.getElementById('wtime').firstChild.nodeValue = fmt(elapsed);
+    document.getElementById('wsteps').firstChild.nodeValue = String(trail.length-1);
+    const tags = ["You found the way through.","Not a single wrong turn wasted.","The thread held.","Out, and dry."];
+    document.getElementById('wintag').textContent = tags[(Math.random()*tags.length)|0];
+    setTimeout(()=>winEl.classList.add('show'), 420);
+  }
+
+  // ---- camera follow (dead-zone + easing) ----
+  function updateCamera(){
+    const head = trail[trail.length-1];
+    const hx = (cx(head)+0.5)*cellSize, hy = (cy(head)+0.5)*cellSize;
+    const dzX = viewW*0.26, dzY = viewH*0.24; // dead zone: only pan when head nears the edge
+    if (hx < tCamX + dzX) tCamX = hx - dzX;
+    if (hx > tCamX + viewW - dzX) tCamX = hx - viewW + dzX;
+    if (hy < tCamY + dzY) tCamY = hy - dzY;
+    if (hy > tCamY + viewH - dzY) tCamY = hy - viewH + dzY;
+    tCamX = clampCam(tCamX, worldW()-viewW);
+    tCamY = clampCam(tCamY, worldH()-viewH);
+    camX += (tCamX - camX) * 0.16;
+    camY += (tCamY - camY) * 0.16;
+  }
+
+  // ---- render ----
+  function draw(t){
+    ctx.clearRect(0,0,viewW,viewH);
+    // ambient floor
+    ctx.fillStyle = '#0e171b';
+    ctx.fillRect(0,0,viewW,viewH);
+
+    const c0 = Math.max(0, Math.floor(camX/cellSize));
+    const r0 = Math.max(0, Math.floor(camY/cellSize));
+    const c1 = Math.min(cols-1, Math.ceil((camX+viewW)/cellSize));
+    const r1 = Math.min(rows-1, Math.ceil((camY+viewH)/cellSize));
+
+    // walls
+    ctx.strokeStyle = getVar('--wall');
+    ctx.lineWidth = Math.max(3, cellSize*0.085);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let r=r0; r<=r1; r++){
+      for (let c=c0; c<=c1; c++){
+        const i = idx(c,r), x = c*cellSize - camX, y = r*cellSize - camY, s = cellSize;
+        const w = cells[i].walls;
+        if (w[0]){ ctx.moveTo(x,y); ctx.lineTo(x+s,y); }
+        if (w[3]){ ctx.moveTo(x,y); ctx.lineTo(x,y+s); }
+        if (c===cols-1 && w[1]){ ctx.moveTo(x+s,y); ctx.lineTo(x+s,y+s); }
+        if (r===rows-1 && w[2]){ ctx.moveTo(x,y+s); ctx.lineTo(x+s,y+s); }
+      }
+    }
+    ctx.stroke();
+
+    // start ring
+    drawMarker(startCell, '#c9a06a', false, t);
+    // end beacon (pulsing)
+    drawMarker(endCell, getVar('--beacon'), true, t);
+
+    // the thread
+    if (trail.length > 1){
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      // glow underlay
+      ctx.strokeStyle = 'rgba(255,192,106,0.22)';
+      ctx.lineWidth = cellSize*0.5;
+      strokeTrail();
+      // core
+      const grad = ctx.createLinearGradient(0,0,viewW,viewH);
+      grad.addColorStop(0, getVar('--thread'));
+      grad.addColorStop(1, '#ffd98f');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = cellSize*0.2;
+      strokeTrail();
+    }
+    // head bead
+    const head = trail[trail.length-1];
+    const hx = (cx(head)+0.5)*cellSize - camX, hy = (cy(head)+0.5)*cellSize - camY;
+    ctx.beginPath(); ctx.arc(hx, hy, cellSize*0.17, 0, 7);
+    ctx.fillStyle = getVar('--thread-core'); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, cellSize*0.30, 0, 7);
+    ctx.strokeStyle = 'rgba(255,240,210,0.35)'; ctx.lineWidth = 2; ctx.stroke();
+
+    // finger ghost ring (shows the lifted active point)
+    if (fingerActive && dragging){
+      const gx = fingerActive.x - camX, gy = fingerActive.y - camY;
+      ctx.beginPath(); ctx.arc(gx, gy, cellSize*0.34, 0, 7);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    drawMinimap();
+  }
+
+  function strokeTrail(){
+    ctx.beginPath();
+    for (let k=0;k<trail.length;k++){
+      const i = trail[k];
+      const x=(cx(i)+0.5)*cellSize-camX, y=(cy(i)+0.5)*cellSize-camY;
+      k===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+
+  function drawMarker(i, color, pulse, t){
+    const x=(cx(i)+0.5)*cellSize-camX, y=(cy(i)+0.5)*cellSize-camY;
+    if (pulse){
+      const p = (Math.sin(t/520)*0.5+0.5);
+      ctx.beginPath(); ctx.arc(x,y, cellSize*(0.28+0.22*p), 0, 7);
+      ctx.strokeStyle = `rgba(86,224,200,${0.5-0.4*p})`; ctx.lineWidth=2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y, cellSize*0.2, 0, 7);
+      ctx.fillStyle = color; ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(x,y, cellSize*0.19, 0, 7);
+      ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+    }
+  }
+
+  // ---- minimap: the whole maze, tiny, showing how little you've seen ----
+  function drawMinimap(){
+    const pad = 12, mw = Math.min(96, viewW*0.30);
+    const scale = mw / worldW();
+    const mh = worldH()*scale;
+    const ox = viewW - mw - pad, oy = pad;
+    // card
+    roundRect(ox-7, oy-7, mw+14, mh+14, 10);
+    ctx.fillStyle = 'rgba(8,14,16,0.66)'; ctx.fill();
+    ctx.strokeStyle = getVar('--line'); ctx.lineWidth = 1; ctx.stroke();
+    // maze bounds
+    ctx.fillStyle = 'rgba(51,71,79,0.28)';
+    ctx.fillRect(ox, oy, mw, mh);
+    // thread
+    if (trail.length>1){
+      ctx.beginPath();
+      for (let k=0;k<trail.length;k++){
+        const i=trail[k];
+        const x=ox+(cx(i)+0.5)*cellSize*scale, y=oy+(cy(i)+0.5)*cellSize*scale;
+        k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = getVar('--thread'); ctx.lineWidth = 1.4; ctx.lineJoin='round'; ctx.stroke();
+    }
+    // start + end dots
+    dot(ox+(cx(startCell)+0.5)*cellSize*scale, oy+(cy(startCell)+0.5)*cellSize*scale, '#c9a06a');
+    dot(ox+(cx(endCell)+0.5)*cellSize*scale, oy+(cy(endCell)+0.5)*cellSize*scale, getVar('--beacon'));
+    // current viewport rectangle
+    ctx.strokeStyle = 'rgba(255,240,210,0.7)'; ctx.lineWidth = 1;
+    ctx.strokeRect(ox+camX*scale, oy+camY*scale, viewW*scale, viewH*scale);
+  }
+  function dot(x,y,c){ ctx.beginPath(); ctx.arc(x,y,2.4,0,7); ctx.fillStyle=c; ctx.fill(); }
+  function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  // ---- helpers ----
+  const varCache = {};
+  function getVar(name){ return varCache[name] || (varCache[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim()); }
+  function fmt(ms){ const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+  function updateHud(){
+    elSteps.textContent = String(trail.length-1);
+    elTime.textContent = fmt(won ? elapsed : (started ? performance.now()-startTime : 0));
+  }
+
+  // ---- loop ----
+  function frame(t){
+    updateCamera();
+    draw(t);
+    updateHud();
+    requestAnimationFrame(frame);
+  }
+
+  // ---- controls ----
+  document.querySelectorAll('.chip').forEach(ch=>{
+    ch.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip').forEach(x=>x.removeAttribute('aria-pressed'));
+      ch.setAttribute('aria-pressed','true');
+      sizeKey = ch.dataset.size;
+      resetGame(true);
+    });
+  });
+  document.getElementById('reset').addEventListener('click', ()=>resetGame(true));
+  document.getElementById('again').addEventListener('click', ()=>resetGame(true));
+
+  let rz; window.addEventListener('resize', ()=>{ clearTimeout(rz); rz=setTimeout(()=>layout(), 120); });
+
+  // go
+  resetGame(true);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

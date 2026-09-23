@@ -9783,7 +9783,12 @@
   loadProgress();
   loadSaves();
   loadLevelRecords();
-  loadLevel(Math.min(beaten, TOTAL-1));   // resume at the next unbeaten level
+  // "can you not save the last level I was on, I would like it to always
+  // start at level 1" -- always boot into level 1's data, regardless of how
+  // far `beaten` has progressed (that still tracks which levels are
+  // unlocked on the map -- see loadProgress/saveProgress -- this only
+  // decides what loads first before the player picks a level).
+  loadLevel(0);
   requestAnimationFrame(frame);
 
   // ---- boot loading screen -> map reveal ------------------------------------------
